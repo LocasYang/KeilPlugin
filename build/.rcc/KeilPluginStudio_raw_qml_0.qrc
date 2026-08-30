@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="/qt/qml/KeilPluginStudio/">
+    <file alias="qml/Main.qml">F:/mine/code/qt/KeilPluginStudio/qml/Main.qml</file>
+    <file alias="qml/Theme.qml">F:/mine/code/qt/KeilPluginStudio/qml/Theme.qml</file>
+    <file alias="qml/components/AppButton.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/AppButton.qml</file>
+    <file alias="qml/components/AppCard.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/AppCard.qml</file>
+    <file alias="qml/components/AppComboBox.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/AppComboBox.qml</file>
+    <file alias="qml/components/NavItem.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/NavItem.qml</file>
+    <file alias="qml/components/StatusPill.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/StatusPill.qml</file>
+    <file alias="qml/components/DataUnavailableState.qml">F:/mine/code/qt/KeilPluginStudio/qml/components/DataUnavailableState.qml</file>
+    <file alias="qml/dialogs/ConfirmDialog.qml">F:/mine/code/qt/KeilPluginStudio/qml/dialogs/ConfirmDialog.qml</file>
+    <file alias="qml/pages/PluginsPage.qml">F:/mine/code/qt/KeilPluginStudio/qml/pages/PluginsPage.qml</file>
+    <file alias="qml/pages/ReportPage.qml">F:/mine/code/qt/KeilPluginStudio/qml/pages/ReportPage.qml</file>
+    <file alias="qml/pages/LogPage.qml">F:/mine/code/qt/KeilPluginStudio/qml/pages/LogPage.qml</file>
+    <file alias="qml/pages/SettingsPage.qml">F:/mine/code/qt/KeilPluginStudio/qml/pages/SettingsPage.qml</file>
+    <file alias="qml/assets/keilplugin-mark.svg">F:/mine/code/qt/KeilPluginStudio/qml/assets/keilplugin-mark.svg</file>
+  </qresource>
+</RCC>
+

@@ -1,0 +1,14 @@
+-rootPath
+F:/mine/code/qt/KeilPluginStudio
+-cmake-output
+-output-file
+F:/mine/code/qt/KeilPluginStudio/build/.qt_plugins/Qt6_QmlPlugins_Imports_KeilPluginStudio.cmake
+-importPath
+F:/mine/code/qt/KeilPluginStudio/build/KeilPluginStudio
+-importPath
+F:/mine/code/qt/KeilPluginStudio/build
+-importPath
+E:/QT/6.6.3/mingw_64/./qml
+-qrcFiles
+F:/mine/code/qt/KeilPluginStudio/build/.rcc/qmake_KeilPluginStudio.qrc
+F:/mine/code/qt/KeilPluginStudio/build/.rcc/KeilPluginStudio_raw_qml_0.qrc

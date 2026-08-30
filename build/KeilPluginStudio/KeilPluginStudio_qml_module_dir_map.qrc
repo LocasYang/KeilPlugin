@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="/qt/qml/KeilPluginStudio">F:/mine/code/qt/KeilPluginStudio/build/KeilPluginStudio</file>
+
+  </qresource>
+</RCC>

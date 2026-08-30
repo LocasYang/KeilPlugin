@@ -1,0 +1,17 @@
+module KeilPluginStudio
+typeinfo KeilPluginStudio.qmltypes
+prefer :/qt/qml/KeilPluginStudio/
+Main 1.0 qml/Main.qml
+singleton Theme 1.0 qml/Theme.qml
+AppButton 1.0 qml/components/AppButton.qml
+AppCard 1.0 qml/components/AppCard.qml
+AppComboBox 1.0 qml/components/AppComboBox.qml
+NavItem 1.0 qml/components/NavItem.qml
+StatusPill 1.0 qml/components/StatusPill.qml
+DataUnavailableState 1.0 qml/components/DataUnavailableState.qml
+ConfirmDialog 1.0 qml/dialogs/ConfirmDialog.qml
+PluginsPage 1.0 qml/pages/PluginsPage.qml
+ReportPage 1.0 qml/pages/ReportPage.qml
+LogPage 1.0 qml/pages/LogPage.qml
+SettingsPage 1.0 qml/pages/SettingsPage.qml
+

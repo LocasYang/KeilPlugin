@@ -1,0 +1,17 @@
+--resource
+F:/mine/code/qt/KeilPluginStudio/build/.rcc/qmake_KeilPluginStudio.qrc
+--resource
+F:/mine/code/qt/KeilPluginStudio/build/.rcc/KeilPluginStudio_raw_qml_0.qrc
+/qt/qml/KeilPluginStudio/qml/Main.qml
+/qt/qml/KeilPluginStudio/qml/Theme.qml
+/qt/qml/KeilPluginStudio/qml/components/AppButton.qml
+/qt/qml/KeilPluginStudio/qml/components/AppCard.qml
+/qt/qml/KeilPluginStudio/qml/components/AppComboBox.qml
+/qt/qml/KeilPluginStudio/qml/components/NavItem.qml
+/qt/qml/KeilPluginStudio/qml/components/StatusPill.qml
+/qt/qml/KeilPluginStudio/qml/components/DataUnavailableState.qml
+/qt/qml/KeilPluginStudio/qml/dialogs/ConfirmDialog.qml
+/qt/qml/KeilPluginStudio/qml/pages/PluginsPage.qml
+/qt/qml/KeilPluginStudio/qml/pages/ReportPage.qml
+/qt/qml/KeilPluginStudio/qml/pages/LogPage.qml
+/qt/qml/KeilPluginStudio/qml/pages/SettingsPage.qml

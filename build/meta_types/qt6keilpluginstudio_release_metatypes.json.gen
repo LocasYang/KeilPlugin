@@ -1,0 +1,360 @@
+[
+    {
+        "classes": [
+            {
+                "className": "KeilProject",
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "name": "sourcePath",
+                        "notify": "dataChanged",
+                        "read": "sourcePath",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "name": "kind",
+                        "notify": "dataChanged",
+                        "read": "kind",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "name": "valid",
+                        "notify": "dataChanged",
+                        "read": "valid",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "name": "errorString",
+                        "notify": "dataChanged",
+                        "read": "errorString",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "name": "targets",
+                        "notify": "dataChanged",
+                        "read": "targets",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantList",
+                        "user": false
+                    }
+                ],
+                "qualifiedClassName": "KeilProject",
+                "signals": [
+                    {
+                        "access": "public",
+                        "name": "dataChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "keilproject.h",
+        "outputRevision": 68
+    },
+    {
+        "classes": [
+            {
+                "className": "PluginManager",
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "source",
+                                "type": "QVariant"
+                            }
+                        ],
+                        "name": "loadProject",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "name": "reloadProject",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "pluginId",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "installPlugin",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "pluginId",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "uninstallPlugin",
+                        "returnType": "bool"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "targetIndex",
+                                "type": "int"
+                            }
+                        ],
+                        "name": "targetReport",
+                        "returnType": "QVariantMap"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "pluginId",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "args",
+                                "type": "QVariantMap"
+                            }
+                        ],
+                        "name": "runTool",
+                        "returnType": "QVariantMap"
+                    },
+                    {
+                        "access": "public",
+                        "name": "clearLogs",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "level",
+                                "type": "QString"
+                            },
+                            {
+                                "name": "message",
+                                "type": "QString"
+                            }
+                        ],
+                        "name": "appendLog",
+                        "returnType": "void"
+                    }
+                ],
+                "object": true,
+                "properties": [
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 0,
+                        "name": "project",
+                        "notify": "projectChanged",
+                        "read": "project",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "KeilProject*",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 1,
+                        "name": "projectLoaded",
+                        "notify": "projectChanged",
+                        "read": "projectLoaded",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "bool",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 2,
+                        "name": "plugins",
+                        "notify": "pluginsChanged",
+                        "read": "plugins",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantList",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 3,
+                        "name": "logs",
+                        "notify": "logsChanged",
+                        "read": "logs",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantList",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 4,
+                        "name": "statusMessage",
+                        "notify": "statusMessageChanged",
+                        "read": "statusMessage",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QString",
+                        "user": false
+                    },
+                    {
+                        "constant": false,
+                        "designable": true,
+                        "final": false,
+                        "index": 5,
+                        "name": "lastResult",
+                        "notify": "lastResultChanged",
+                        "read": "lastResult",
+                        "required": false,
+                        "scriptable": true,
+                        "stored": true,
+                        "type": "QVariantMap",
+                        "user": false
+                    }
+                ],
+                "qualifiedClassName": "PluginManager",
+                "signals": [
+                    {
+                        "access": "public",
+                        "name": "projectChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "pluginsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "logsChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "statusMessageChanged",
+                        "returnType": "void"
+                    },
+                    {
+                        "access": "public",
+                        "name": "lastResultChanged",
+                        "returnType": "void"
+                    }
+                ],
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "pluginmanager.h",
+        "outputRevision": 68
+    },
+    {
+        "classes": [
+            {
+                "className": "WindowChrome",
+                "methods": [
+                    {
+                        "access": "public",
+                        "arguments": [
+                            {
+                                "name": "windowObject",
+                                "type": "QObject*"
+                            },
+                            {
+                                "name": "dark",
+                                "type": "bool"
+                            },
+                            {
+                                "name": "captionColor",
+                                "type": "QColor"
+                            },
+                            {
+                                "name": "textColor",
+                                "type": "QColor"
+                            },
+                            {
+                                "name": "borderColor",
+                                "type": "QColor"
+                            }
+                        ],
+                        "name": "apply",
+                        "returnType": "bool"
+                    }
+                ],
+                "object": true,
+                "qualifiedClassName": "WindowChrome",
+                "superClasses": [
+                    {
+                        "access": "public",
+                        "name": "QObject"
+                    }
+                ]
+            }
+        ],
+        "inputFile": "windowchrome.h",
+        "outputRevision": 68
+    }
+]
