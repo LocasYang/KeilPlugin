@@ -16,9 +16,25 @@ struct KeilTarget {
     QString outputDir;
     QString listingDir;
     QString outputName;
+    // Map path from a Linker "Misc controls" --list= override, resolved
+    // against the uvprojx directory. Empty when no override is configured.
+    QString linkerMapFile;
+    // uvprojx <AdsLmap>: the Listing tab "Linker Listing" map checkbox. When
+    // false Keil never writes a .map, so not finding one is expected.
+    bool linkerMapEnabled = true;
     bool hookInstalled = false;
     QString mapPath;
     bool mapFound = false;
+};
+
+// Result of matching an After Build linker output (#L, a .axf path) back to a
+// project target. target is only meaningful when matched; mapPath is the best
+// map file for the axf (map next to the axf first, then the target's own
+// project-resolved map).
+struct AxfContextMatch {
+    KeilTarget target;
+    bool matched = false;
+    QString mapPath;
 };
 
 struct KeilProjectData {
@@ -49,6 +65,10 @@ QByteArray encodeText(const QString &text, bool isUtf8, bool hadBom);
 // Expands a uvprojx / uvmpw / directory input and parses every target of every
 // project file, including hook marker detection and .map discovery.
 KeilProjectData parseKeilProject(const QString &path);
+
+// Maps an After Build .axf path (exactly as Keil expands #L, i.e. possibly
+// relative to the uvprojx directory) to its target and map file.
+AxfContextMatch resolveAxfContext(const KeilProjectData &data, const QString &axfPath);
 
 class KeilProject : public QObject
 {

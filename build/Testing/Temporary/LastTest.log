@@ -1,18 +1,18 @@
-Start testing: Aug 30 15:36 中国标准时间
+Start testing: Aug 31 00:08 中国标准时间
 ----------------------------------------------------------
 1/1 Testing: KeilPluginCoreTest
 1/1 Test: KeilPluginCoreTest
-Command: "F:/mine/code/qt/KeilPluginStudio/build/KeilPluginCoreTest.exe"
-Directory: F:/mine/code/qt/KeilPluginStudio/build
-"KeilPluginCoreTest" start time: Aug 30 15:36 中国标准时间
+Command: "J:/mine/code/QT/keil_-plugin/build/KeilPluginCoreTest.exe"
+Directory: J:/mine/code/QT/keil_-plugin/build
+"KeilPluginCoreTest" start time: Aug 31 00:08 中国标准时间
 Output:
 ----------------------------------------------------------
 <end of output>
-Test time =   0.13 sec
+Test time =   0.24 sec
 ----------------------------------------------------------
-Test Failed.
-"KeilPluginCoreTest" end time: Aug 30 15:36 中国标准时间
+Test Passed.
+"KeilPluginCoreTest" end time: Aug 31 00:08 中国标准时间
 "KeilPluginCoreTest" time elapsed: 00:00:00
 ----------------------------------------------------------
 
-End testing: Aug 30 15:36 中国标准时间
+End testing: Aug 31 00:08 中国标准时间

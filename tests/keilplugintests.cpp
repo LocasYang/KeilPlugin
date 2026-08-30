@@ -300,6 +300,185 @@ void testProjectParse()
     }
 }
 
+// Flexible Target block for map-resolution tests: output/listing paths,
+// linker Misc controls and the AdsLmap (Linker Listing) checkbox per target.
+const char *kTargetBlock = R"(
+  <Target>
+    <TargetName>%1</TargetName>
+    <TargetOption>
+      <TargetCommonOption>
+        <Device>STM32F103ZE</Device>
+        <Vendor>STMicroelectronics</Vendor>
+        <Cpu>IROM(0x08000000,0x80000) IRAM(0x20000000,0x10000) CPUTYPE("Cortex-M3") CLOCK(12000000) ELITTLE</Cpu>
+        <OutputDirectory>%2</OutputDirectory>
+        <OutputName>%3</OutputName>
+        <ListingPath>%4</ListingPath>
+      </TargetCommonOption>
+      <TargetArmAds>
+        <ArmAdsMisc>
+          <AdsLmap>%6</AdsLmap>
+        </ArmAdsMisc>
+        <LDads>
+          <Misc>%5</Misc>
+        </LDads>
+      </TargetArmAds>
+    </TargetOption>
+  </Target>
+)";
+
+void appendTarget(QString &xml, const QString &name, const QString &outputDir,
+                  const QString &outputName, const QString &listingPath,
+                  const QString &misc, const QString &adsLmap)
+{
+    xml += QString(kTargetBlock).arg(name, outputDir, outputName, listingPath, misc, adsLmap);
+}
+
+QString layeredProjectHeader()
+{
+    return QStringLiteral("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"
+                          "<Project>");
+}
+
+void testMapResolutionLayers()
+{
+    // 1) Map in a third custom directory: neither the Listing nor the Output
+    //    folder holds it, so only the bounded project-tree search finds it.
+    {
+        QTemporaryDir dir;
+        QDir().mkpath(dir.path() + "/Project/uv5");
+        const QString projectPath = dir.path() + "/Project/uv5/app.uvprojx";
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "App", "../../Output", "app", "../../Listings", "", "1");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+        QDir().mkpath(dir.path() + "/Output");
+        QDir().mkpath(dir.path() + "/Listings");
+        QDir().mkpath(dir.path() + "/Maps");
+        const QString mapPath = QDir::cleanPath(dir.path() + "/Maps/app.map");
+        writeText(mapPath, mapFixture());
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        check(data.targets.size() == 1, "custom dir: one target");
+        if (data.targets.size() == 1) {
+            check(data.targets.first().mapFound, "map in custom dir found recursively");
+            check(data.targets.first().mapPath == mapPath, "custom dir map path");
+        }
+    }
+
+    // 2) Linker "Misc controls" --list= override: wins even when the Listing
+    //    folder also holds a map, and may rename it anywhere.
+    {
+        QTemporaryDir dir;
+        const QString projectPath = dir.filePath("app.uvprojx");
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "App", "./Objects", "app", "./Listings",
+                     QStringLiteral("--list=\"Renamed/build.map\""), "1");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+        QDir().mkpath(dir.path() + "/Listings");
+        writeText(dir.path() + "/Listings/app.map", mapFixture());
+        QDir().mkpath(dir.path() + "/Renamed");
+        const QString overrideMap = QDir::cleanPath(dir.path() + "/Renamed/build.map");
+        writeText(overrideMap, mapFixture());
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        check(data.targets.size() == 1, "--list override: one target");
+        if (data.targets.size() == 1) {
+            check(data.targets.first().mapFound, "--list override map found");
+            check(data.targets.first().mapPath == overrideMap, "--list override wins");
+        }
+    }
+
+    // 3) AdsLmap=0 (Linker Listing unchecked) is surfaced so a missing map can
+    //    be explained instead of just asking the user to rebuild.
+    {
+        QTemporaryDir dir;
+        const QString projectPath = dir.filePath("app.uvprojx");
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "App", "./Objects", "app", "./Listings", "", "0");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        check(data.targets.size() == 1, "AdsLmap=0: one target");
+        if (data.targets.size() == 1)
+            check(!data.targets.first().linkerMapEnabled, "AdsLmap=0 recorded");
+    }
+}
+
+void testResolveAxfContext()
+{
+    // Regression for the ISO-STM32 layout: uvprojx nested two folders deep,
+    // outputs hoisted to <root>/Output and <root>/Listing, #L handed over
+    // relative to the uvprojx directory. The map lives in Listing, not next
+    // to the axf — this must still resolve.
+    {
+        QTemporaryDir dir;
+        QDir().mkpath(dir.path() + "/Project/uv5");
+        const QString projectPath = dir.path() + "/Project/uv5/iso.uvprojx";
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "Template", "../../Output", "Template", "../../Listing", "", "1");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+        QDir().mkpath(dir.path() + "/Output");
+        QDir().mkpath(dir.path() + "/Listing");
+        writeText(dir.path() + "/Listing/Template.map", mapFixture());
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        check(data.targets.size() == 1, "nested layout: one target");
+        check(data.targets.first().mapFound, "nested layout map found");
+        const AxfContextMatch match =
+                resolveAxfContext(data, QStringLiteral("../../Output/Template.axf"));
+        check(match.matched, "axf matched to its target");
+        check(match.target.name == QLatin1String("Template"), "axf target name");
+        check(match.target.device == QLatin1String("STM32F103ZE"), "axf target device");
+        check(match.target.flashCap == 0x80000, "axf target flash cap");
+        check(match.mapPath == QDir::cleanPath(dir.path() + "/Listing/Template.map"),
+              "map from Listing dir when axf has no sibling map");
+    }
+
+    // A map sitting next to the axf is the strongest hint and wins over the
+    // project-resolved one.
+    {
+        QTemporaryDir dir;
+        const QString projectPath = dir.filePath("flat.uvprojx");
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "Flat", "./Objects", "flat", "./Listings", "", "1");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+        QDir().mkpath(dir.path() + "/Listings");
+        writeText(dir.path() + "/Listings/flat.map", mapFixture());
+        QDir().mkpath(dir.path() + "/Objects");
+        writeText(dir.path() + "/Objects/flat.map", mapFixture());
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        const AxfContextMatch match = resolveAxfContext(data, QStringLiteral("Objects/flat.axf"));
+        check(match.matched, "flat layout axf matched");
+        check(match.mapPath == QDir::cleanPath(dir.path() + "/Objects/flat.map"),
+              "map next to axf wins");
+    }
+
+    // Multi-target projects: the OutputName disambiguates when all targets
+    // share one output folder.
+    {
+        QTemporaryDir dir;
+        const QString projectPath = dir.filePath("multi.uvprojx");
+        QString xml = layeredProjectHeader();
+        appendTarget(xml, "Boot", "./Objects", "boot", "./Listings", "", "1");
+        appendTarget(xml, "App", "./Objects", "app", "./Listings", "", "1");
+        xml += QStringLiteral("\n</Project>\n");
+        writeText(projectPath, xml);
+        QDir().mkpath(dir.path() + "/Objects");
+        writeText(dir.path() + "/Objects/boot.map", mapFixture());
+
+        const KeilProjectData data = parseKeilProject(projectPath);
+        check(data.targets.size() == 2, "multi-target project parsed");
+        const AxfContextMatch match = resolveAxfContext(data, QStringLiteral("Objects/app.axf"));
+        check(match.matched && match.target.name == QLatin1String("App"),
+              "outputName disambiguates shared output dir");
+    }
+}
+
 void testHexMerger()
 {
     QTemporaryDir dir;
@@ -398,6 +577,8 @@ int main(int argc, char *argv[])
     testHookInstallUninstall();
     testKeySequenceExpansion();
     testProjectParse();
+    testMapResolutionLayers();
+    testResolveAxfContext();
     testHexMerger();
     testRegistry();
 

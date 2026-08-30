@@ -247,6 +247,7 @@ QString formatQuietLine(const KeilTarget &target, const MapSummary &summary)
 struct CliConfig {
     QString path;
     QString projectPath; // uvprojx context for .axf inputs (#L): caps + metadata
+    QString mapOverride; // explicit .map path (--map), beats every auto guess
     QString wrap;        // verbatim wrapped command (--wrap)
     QString wrapB64;     // base64-wrapped command (--wrap-b64)
     int top = 0;
@@ -275,6 +276,8 @@ int runSizeReportCli(const QStringList &arguments)
                 config.wrapB64 = arguments.at(++i);
         } else if (argument == QLatin1String("--project") && i + 1 < arguments.size()) {
             config.projectPath = arguments.at(++i);
+        } else if (argument == QLatin1String("--map") && i + 1 < arguments.size()) {
+            config.mapOverride = arguments.at(++i);
         } else if (argument == QLatin1String("--top") && i + 1 < arguments.size()) {
             config.top = arguments.at(++i).toInt();
         } else if (argument == QLatin1String("--flash") && i + 1 < arguments.size()) {
@@ -291,7 +294,8 @@ int runSizeReportCli(const QStringList &arguments)
 
     if (!haveMode || !havePath) {
         printLine(QStringLiteral("用法: KeilPluginStudio.exe --size-report <uvprojx|uvmpw|.map|.axf|目录>"
-                                 " [--top N] [--flash 230K] [--ram 64K] [--quiet]"),
+                                 " [--project <uvprojx>] [--map <map文件>] [--top N] [--flash 230K]"
+                                 " [--ram 64K] [--quiet]"),
                   true);
         return 2;
     }
@@ -361,42 +365,32 @@ int runSizeReportCli(const QStringList &arguments)
             } else if (suffix == QLatin1String("axf")) {
                 // "#L" from Keil lands here: report exactly this target. The
                 // optional --project context restores the target's name, device
-                // and IROM/IRAM capacities (the axf alone cannot provide them).
-                const QString candidate = info.absolutePath() + QLatin1Char('/')
-                                          + info.completeBaseName() + QStringLiteral(".map");
-                if (QFileInfo::exists(candidate))
-                    mapPath = candidate;
+                // and IROM/IRAM capacities (the axf alone cannot provide them)
+                // and resolves the map even when it does not sit next to the
+                // axf (custom Listing folder, linker --list override, ...).
                 Entry entry;
                 entry.target.project = info.completeBaseName();
                 entry.target.name = QStringLiteral("-");
                 entry.target.device = QStringLiteral("?");
                 entry.hasTarget = false;
-                entry.hasMap = !mapPath.isEmpty();
-                entry.target.mapPath = mapPath;
 
                 if (!config.projectPath.isEmpty()) {
-                    const KeilProjectData context = parseKeilProject(config.projectPath);
-                    const QString resolvedMap = mapPath.isEmpty()
-                            ? QString() : QDir::cleanPath(QFileInfo(mapPath).absoluteFilePath());
-                    const QString axfDir = QDir::cleanPath(info.absolutePath());
-                    for (const KeilTarget &candidate_target : context.targets) {
-                        const bool mapMatch = !resolvedMap.isEmpty()
-                                              && QString::compare(
-                                                     QDir::cleanPath(candidate_target.mapPath),
-                                                     resolvedMap, Qt::CaseInsensitive) == 0;
-                        const bool dirMatch =
-                                QString::compare(QDir::cleanPath(candidate_target.outputDir),
-                                                 axfDir, Qt::CaseInsensitive) == 0
-                                || QString::compare(QDir::cleanPath(candidate_target.listingDir),
-                                                    axfDir, Qt::CaseInsensitive) == 0;
-                        if (mapMatch || dirMatch) {
-                            entry.target = candidate_target;
-                            entry.target.mapPath = mapPath;
-                            entry.hasTarget = true;
-                            break;
-                        }
+                    const AxfContextMatch match =
+                            resolveAxfContext(parseKeilProject(config.projectPath),
+                                              config.path);
+                    if (match.matched) {
+                        entry.target = match.target;
+                        entry.hasTarget = true;
                     }
+                    entry.target.mapPath = match.mapPath;
+                } else {
+                    const QString candidate =
+                            QDir(info.absolutePath()).absoluteFilePath(
+                                    info.completeBaseName() + QStringLiteral(".map"));
+                    if (QFileInfo::exists(candidate))
+                        entry.target.mapPath = QDir::cleanPath(candidate);
                 }
+                entry.hasMap = !entry.target.mapPath.isEmpty();
                 entries.append(entry);
             }
             if (suffix == QLatin1String("map") && !mapPath.isEmpty()) {
@@ -439,11 +433,38 @@ int runSizeReportCli(const QStringList &arguments)
         return 2;
     }
 
+    // Explicit user override: wins over every automatic resolution.
+    if (!config.mapOverride.isEmpty()) {
+        if (!QFileInfo::exists(config.mapOverride)) {
+            printLine(QStringLiteral("--map 指定的文件不存在: %1").arg(config.mapOverride), true);
+            return 2;
+        }
+        const QString overrideMap =
+                QDir::cleanPath(QFileInfo(config.mapOverride).absoluteFilePath());
+        for (Entry &entry : entries) {
+            entry.target.mapPath = overrideMap;
+            entry.hasMap = true;
+        }
+    }
+
     bool ok = false;
     for (const Entry &entry : entries) {
         if (!entry.hasMap) {
-            printLine(QStringLiteral("Target '%1': .map not found — 请先编译一次")
+            printLine(QStringLiteral("Target '%1': 未找到 .map 文件")
                           .arg(entry.hasTarget ? entry.target.name : entry.target.project));
+            QStringList searched;
+            if (!entry.target.listingDir.isEmpty())
+                searched.append(entry.target.listingDir);
+            if (!entry.target.outputDir.isEmpty())
+                searched.append(entry.target.outputDir);
+            if (!searched.isEmpty())
+                printLine(QStringLiteral("  已查找: %1, 以及它与工程目录的公共上级(递归, 限深 4 层)")
+                              .arg(searched.join(QStringLiteral(", "))));
+            if (entry.hasTarget && !entry.target.linkerMapEnabled)
+                printLine(QStringLiteral(
+                        "  注意: 该 Target 未勾选 Linker Listing (AdsLmap=0), Keil 不会生成 map"));
+            printLine(QStringLiteral(
+                    "  若从未编译请先编译一次; 否则请检查 map 输出目录设置, 或用 --map <map文件> 显式指定"));
             continue;
         }
         const MapSummary summary = MapParser::parse(entry.target.mapPath);

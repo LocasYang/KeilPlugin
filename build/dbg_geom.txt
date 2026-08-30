@@ -1,6 +1,0 @@
-qml: ROW width = 1008
-qml: DETAIL CARD width = 2
-qml: PAGE width = 1008 height = 0
-qml: ROW size = 1008 676
-qml: DETAIL CARD size = 2 676
-qml: LEFT size = 992 676

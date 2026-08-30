@@ -63,9 +63,105 @@ QString newestMapInDir(const QString &directory)
     return best;
 }
 
-QString findMapFile(const KeilTarget &target)
+// Extracts an armlink --list= path (the map file override) from linker
+// "Misc controls" text. Handles both "--list=path" and "--list path",
+// quoted or not; returns an empty string when absent.
+QString linkerListPath(const QString &miscControls)
+{
+    static const QRegularExpression re(
+        QStringLiteral("--list\\s*(?:=|\\s)\\s*(\"[^\"]+\"|[^\\s\"]+)"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch match = re.match(miscControls);
+    if (!match.hasMatch())
+        return QString();
+    QString value = match.captured(1);
+    value.remove(QLatin1Char('"'));
+    return value.trimmed();
+}
+
+// Nearest common ancestor of two absolute paths; empty when they share no
+// component (different drives on Windows).
+QString commonAncestor(const QString &a, const QString &b)
+{
+    const QStringList partsA = cleanPath(a).split(QLatin1Char('/'));
+    const QStringList partsB = cleanPath(b).split(QLatin1Char('/'));
+    QStringList common;
+    const int count = qMin(partsA.size(), partsB.size());
+    for (int i = 0; i < count; ++i) {
+        if (partsA.at(i).compare(partsB.at(i), Qt::CaseInsensitive) != 0)
+            break;
+        common.append(partsA.at(i));
+    }
+    if (common.isEmpty())
+        return QString();
+    if (common.size() == 1 && common.first().endsWith(QLatin1Char(':')))
+        return common.first() + QLatin1Char('/');
+    return common.join(QLatin1Char('/'));
+}
+
+// Bounded recursive search for *.map under root. A file whose name starts with
+// the target's output name beats any other map name; newest modification time
+// wins inside each tier. Used only as a last-resort layer, so it stays cheap:
+// depth-limited, file-count-capped, and it never descends into VCS folders.
+QString searchMapTree(const QString &root, const QString &outputName)
+{
+    struct Frame {
+        QString path;
+        int depth;
+    };
+
+    QString namedBest;
+    QDateTime namedTime;
+    QString anyBest;
+    QDateTime anyTime;
+    qint64 visited = 0;
+
+    QVector<Frame> pending{ Frame{ cleanPath(root), 0 } };
+    while (!pending.isEmpty()) {
+        const Frame frame = pending.takeLast();
+        const QDir dir(frame.path);
+        const QFileInfoList maps = dir.entryInfoList({ QStringLiteral("*.map") }, QDir::Files,
+                                                      QDir::NoSort);
+        for (const QFileInfo &info : maps) {
+            if (++visited > 20000)
+                return namedBest.isEmpty() ? anyBest : namedBest;
+            const bool named = !outputName.isEmpty()
+                               && info.completeBaseName().startsWith(outputName,
+                                                                     Qt::CaseInsensitive);
+            if (named) {
+                if (info.lastModified() > namedTime) {
+                    namedTime = info.lastModified();
+                    namedBest = info.absoluteFilePath();
+                }
+            } else if (info.lastModified() > anyTime) {
+                anyTime = info.lastModified();
+                anyBest = info.absoluteFilePath();
+            }
+        }
+        if (frame.depth >= 4)
+            continue;
+        const QFileInfoList subdirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot,
+                                                        QDir::NoSort);
+        for (const QFileInfo &subdir : subdirs) {
+            const QString name = subdir.fileName();
+            if (name.compare(QLatin1String(".git"), Qt::CaseInsensitive) == 0
+                || name.compare(QLatin1String(".svn"), Qt::CaseInsensitive) == 0)
+                continue;
+            pending.append(Frame{ subdir.absoluteFilePath(), frame.depth + 1 });
+        }
+    }
+    return namedBest.isEmpty() ? anyBest : namedBest;
+}
+
+// Layered .map resolution for a target. The uvprojx is the authority: an
+// explicit linker --list= override first, then the Listing/Output folders.
+// "Newest .map" in those folders and a bounded recursive search around the
+// project only kick in when the configured locations hold no map at all.
+QString findMapFile(const QString &projectDir, const KeilTarget &target)
 {
     QStringList candidates;
+    if (!target.linkerMapFile.isEmpty())
+        candidates.append(target.linkerMapFile);
     if (!target.outputName.isEmpty()) {
         if (!target.listingDir.isEmpty())
             candidates.append(QDir(target.listingDir).absoluteFilePath(target.outputName
@@ -96,7 +192,18 @@ QString findMapFile(const KeilTarget &target)
             best = found;
         }
     }
-    return best;
+    if (!best.isEmpty())
+        return best;
+
+    QString root = projectDir;
+    for (const QString &directory : { target.listingDir, target.outputDir }) {
+        if (directory.isEmpty())
+            continue;
+        const QString ancestor = commonAncestor(root, directory);
+        if (!ancestor.isEmpty())
+            root = ancestor;
+    }
+    return searchMapTree(root, target.outputName);
 }
 
 QString joinDirectory(const QString &base, const QString &sub)
@@ -121,6 +228,7 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
     const QString projectBase = QFileInfo(uvprojx).completeBaseName();
 
     bool insideTarget = false;
+    bool insideLdads = false;
     KeilTarget current;
     QString userProg1;
     QString userProg2;
@@ -134,7 +242,9 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
         current.ramCap = sumRegionSizes(cpuText, "IRAM");
         current.outputDir = joinDirectory(projectDir, current.outputDir);
         current.listingDir = joinDirectory(projectDir, current.listingDir);
-        current.mapPath = findMapFile(current);
+        if (!current.linkerMapFile.isEmpty())
+            current.linkerMapFile = joinDirectory(projectDir, current.linkerMapFile);
+        current.mapPath = findMapFile(projectDir, current);
         current.mapFound = !current.mapPath.isEmpty();
         current.hookInstalled =
                 UvprojxHook::containsToolMarker(userProg1 + QStringLiteral(" ") + userProg2);
@@ -152,6 +262,7 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
             if (name == QLatin1String("Target")) {
                 finalize();
                 insideTarget = true;
+                insideLdads = false;
                 hasTarget = true;
                 current = KeilTarget{};
                 current.project = projectBase;
@@ -172,14 +283,24 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
                 current.outputName = reader.readElementText().trimmed();
             else if (name == QLatin1String("ListingPath"))
                 current.listingDir = reader.readElementText().trimmed();
+            else if (name == QLatin1String("LDads"))
+                insideLdads = true;
+            else if (insideLdads && name == QLatin1String("Misc"))
+                current.linkerMapFile = linkerListPath(reader.readElementText());
+            else if (name == QLatin1String("AdsLmap"))
+                current.linkerMapEnabled = reader.readElementText().trimmed()
+                                           != QLatin1String("0");
             else if (name == QLatin1String("UserProg1Name"))
                 userProg1 = reader.readElementText();
             else if (name == QLatin1String("UserProg2Name"))
                 userProg2 = reader.readElementText();
-        } else if (token == QXmlStreamReader::EndElement
-                   && reader.name() == QLatin1String("Target")) {
-            finalize();
-            insideTarget = false;
+        } else if (token == QXmlStreamReader::EndElement) {
+            if (reader.name() == QLatin1String("Target")) {
+                finalize();
+                insideTarget = false;
+            } else if (reader.name() == QLatin1String("LDads")) {
+                insideLdads = false;
+            }
         }
     }
     finalize();
@@ -190,6 +311,65 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
 }
 
 } // namespace
+
+AxfContextMatch resolveAxfContext(const KeilProjectData &data, const QString &axfPath)
+{
+    AxfContextMatch result;
+    if (data.uvprojxFiles.isEmpty() || data.targets.isEmpty())
+        return result;
+
+    // Keil expands #L relative to the uvprojx directory, so resolve a relative
+    // axf path against that instead of whatever CWD the hook happens to run in.
+    QFileInfo info(axfPath);
+    if (info.isRelative())
+        info.setFile(QDir(QFileInfo(data.uvprojxFiles.first()).absolutePath()), axfPath);
+    const QString axfDir = QDir::cleanPath(info.absolutePath());
+    const QString axfBase = info.completeBaseName();
+    const QString adjacentMap = QDir(axfDir).absoluteFilePath(axfBase
+                                                              + QStringLiteral(".map"));
+
+    // Pick the owning target: the OutputName matching the axf file name wins,
+    // then a target whose resolved map sits next to the axf, then a target
+    // sharing the axf's output/listing directory. A single-target project
+    // always matches so the hook context survives unusual layouts.
+    const KeilTarget *best = nullptr;
+    int bestTier = 4;
+    for (const KeilTarget &target : data.targets) {
+        int tier = 4;
+        if (!target.outputName.isEmpty()
+            && target.outputName.compare(axfBase, Qt::CaseInsensitive) == 0)
+            tier = 0;
+        else if (!target.mapPath.isEmpty()
+                 && cleanPath(target.mapPath).compare(cleanPath(adjacentMap),
+                                                      Qt::CaseInsensitive) == 0)
+            tier = 1;
+        else if ((!target.outputDir.isEmpty()
+                  && cleanPath(target.outputDir).compare(axfDir, Qt::CaseInsensitive) == 0)
+                 || (!target.listingDir.isEmpty()
+                     && cleanPath(target.listingDir).compare(axfDir, Qt::CaseInsensitive)
+                            == 0))
+            tier = 2;
+        else if (data.targets.size() == 1)
+            tier = 3;
+        if (tier < bestTier) {
+            bestTier = tier;
+            best = &target;
+        }
+    }
+
+    if (best) {
+        result.matched = true;
+        result.target = *best;
+    }
+    // The map next to the linker output is Keil's own strongest hint and wins
+    // even over the project-resolved map; otherwise reuse the latter (which
+    // already went through the layered findMapFile lookup).
+    if (QFileInfo::exists(adjacentMap))
+        result.mapPath = cleanPath(adjacentMap);
+    else if (result.matched)
+        result.mapPath = result.target.mapPath;
+    return result;
+}
 
 namespace ProjectText {
 
@@ -343,6 +523,7 @@ QVariantList KeilProject::targets() const
         map.insert(QStringLiteral("ramCap"), target.ramCap);
         map.insert(QStringLiteral("outputDir"), target.outputDir);
         map.insert(QStringLiteral("outputName"), target.outputName);
+        map.insert(QStringLiteral("linkerMapEnabled"), target.linkerMapEnabled);
         map.insert(QStringLiteral("hookInstalled"), target.hookInstalled);
         map.insert(QStringLiteral("mapFound"), target.mapFound);
         map.insert(QStringLiteral("mapPath"), target.mapPath);

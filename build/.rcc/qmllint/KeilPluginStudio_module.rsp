@@ -1,10 +1,10 @@
 -I
-F:/mine/code/qt/KeilPluginStudio/build
+J:/mine/code/QT/keil_-plugin/build
 -I
-E:/QT/6.6.3/mingw_64/./qml
+I:/QT/6.6.3/mingw_64/./qml
 --resource
-F:/mine/code/qt/KeilPluginStudio/build/.rcc/qmake_KeilPluginStudio.qrc
+J:/mine/code/QT/keil_-plugin/build/.rcc/qmake_KeilPluginStudio.qrc
 --resource
-F:/mine/code/qt/KeilPluginStudio/build/.rcc/KeilPluginStudio_raw_qml_0.qrc
+J:/mine/code/QT/keil_-plugin/build/.rcc/KeilPluginStudio_raw_qml_0.qrc
 --module
 KeilPluginStudio

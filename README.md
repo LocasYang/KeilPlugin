@@ -53,6 +53,24 @@ KeilPluginStudio.exe --wrap-b64 <base64> "#L" --project "<uvprojx>"    # 内部�
   例如 `KeilPluginStudio.exe --size-report demo.uvprojx > report.txt`。
 - 钩子由 Keil 调用时自带重定向，输出照常进入 Build Output 窗口。
 
+### .map 文件查找顺序
+
+Output/Listing 目录只是工程里两个常见位置，map 实际允许放在任意自定义
+目录（Linker 的 Misc controls `--list=`、Listing 目录自定义等）。查找按
+固定顺序进行，命中即停：
+
+1. `--map <map文件>` 显式指定（最高优先级，覆盖一切自动猜测）；
+2. uvprojx 链接器 Misc controls 里的 `--list=` 覆盖路径；
+3. `<ListingPath>/<OutputName>.map`，其次 `<OutputDirectory>/<OutputName>.map`
+   （相对 uvprojx 所在目录解析，任意层级均可）；
+4. 上述目录内"最新的 *.map"；
+5. 工程目录与 Output/Listing 的公共上级目录内有界递归搜索
+   （限深 4 层，优先文件名匹配 OutputName 的 map，其次最新修改）。
+
+仍未命中时，Build Output 会列出已查找的位置：若 Target 未勾选
+Linker Listing（AdsLmap=0）会明确提示 Keil 根本不会生成 map；也可临时在
+钩子命令里追加 `--map "<绝对路径>\xxx.map"` 兜底。
+
 GUI 附加启动参数：`--project=<路径>`（启动即加载工程）、`--page=0..3`、`--dark`。
 
 ## 构建与发布

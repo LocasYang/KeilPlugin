@@ -4,14 +4,14 @@
 
 
 # Configuration directories and files
-SourceDirectory: F:/mine/code/qt/KeilPluginStudio
-BuildDirectory: F:/mine/code/qt/KeilPluginStudio/build
+SourceDirectory: J:/mine/code/QT/keil_-plugin
+BuildDirectory: J:/mine/code/QT/keil_-plugin/build
 
 # Where to place the cost data store
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: LAPTOP-T90GBSDK
+Site: YangFanLove-Study
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
 BuildName: Win32-ninja
@@ -27,8 +27,8 @@ SubmitInactivityTimeout:
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "E:/QT/Tools/CMake_64/bin/cmake.exe" "F:/mine/code/qt/KeilPluginStudio"
-MakeCommand: E:\QT\Tools\CMake_64\bin\cmake.exe --build . --config "${CTEST_CONFIGURATION_TYPE}"
+ConfigureCommand: "I:/QT/Tools/CMake_64/bin/cmake.exe" "J:/mine/code/QT/keil_-plugin"
+MakeCommand: I:\QT\Tools\CMake_64\bin\cmake.exe --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 
 # version control
@@ -45,7 +45,7 @@ SVNOptions:
 SVNUpdateOptions: 
 
 # Git options
-GITCommand: 
+GITCommand: C:/Program Files/Git/mingw64/bin/git.exe
 GITInitSubmodules: 
 GITUpdateOptions: 
 GITUpdateCustom: 
@@ -58,12 +58,12 @@ P4UpdateOptions:
 P4UpdateCustom: 
 
 # Generic update command
-UpdateCommand: 
+UpdateCommand: C:/Program Files/Git/mingw64/bin/git.exe
 UpdateOptions: 
-UpdateType: 
+UpdateType: git
 
 # Compiler info
-Compiler: E:/QT/Tools/mingw1120_64/bin/c++.exe
+Compiler: I:/QT/Tools/mingw1120_64/bin/c++.exe
 CompilerVersion: 11.2.0
 
 # Dynamic analysis (MemCheck)
@@ -76,12 +76,12 @@ CudaSanitizerCommand:
 CudaSanitizerCommandOptions: 
 MemoryCheckType: 
 MemoryCheckSanitizerOptions: 
-MemoryCheckCommand: MEMORYCHECK_COMMAND-NOTFOUND
+MemoryCheckCommand: E:/CUDA_Pack/develoment/bin/cuda-memcheck.exe
 MemoryCheckCommandOptions: 
 MemoryCheckSuppressionFile: 
 
 # Coverage
-CoverageCommand: E:/QT/Tools/mingw1120_64/bin/gcov.exe
+CoverageCommand: I:/QT/Tools/mingw1120_64/bin/gcov.exe
 CoverageExtraFlags: -l
 
 # Testing options

@@ -1,6 +1,7 @@
 ﻿param(
-    [string]$QtRoot = "E:\QT\6.6.3\mingw_64",
-    [string]$QtToolsRoot = "E:\QT\Tools"
+    [string]$QtVersion = "6.6.3",
+    [string]$QtRoot = "",
+    [string]$QtToolsRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,13 +13,16 @@ $DeployDirectory = Join-Path $ProjectRoot "dist\KeilPluginStudio"
 $DeployExecutable = Join-Path $DeployDirectory "KeilPluginStudio.exe"
 $Readme = Join-Path $ProjectRoot "README.md"
 $DeployReadme = Join-Path $DeployDirectory "README.md"
-$WinDeployQt = Join-Path $QtRoot "bin\windeployqt.exe"
+
+. (Join-Path $PSScriptRoot "qt-toolchain.ps1")
+$toolchain = Get-QtToolchain -Version $QtVersion -QtRoot $QtRoot -QtToolsRoot $QtToolsRoot
+$QtRoot      = $toolchain.QtRoot
+$MingwBin    = $toolchain.MingwBin
+$WinDeployQt = $toolchain.WinDeployQt
 
 if (-not (Test-Path -LiteralPath $Executable)) {
-    & (Join-Path $PSScriptRoot "build.ps1") -QtRoot $QtRoot -QtToolsRoot $QtToolsRoot
-}
-if (-not (Test-Path -LiteralPath $WinDeployQt)) {
-    throw "未找到 windeployqt：$WinDeployQt"
+    & (Join-Path $PSScriptRoot "build.ps1") -QtVersion $QtVersion `
+        -QtRoot $QtRoot -QtToolsRoot $QtToolsRoot
 }
 
 New-Item -ItemType Directory -Force -Path $DeployDirectory | Out-Null
@@ -27,7 +31,7 @@ if (Test-Path -LiteralPath $Readme) {
     Copy-Item -LiteralPath $Readme -Destination $DeployReadme -Force
 }
 
-$env:PATH = "$(Join-Path $QtToolsRoot 'mingw1120_64\bin');$(Join-Path $QtRoot 'bin');$env:PATH"
+$env:PATH = "$MingwBin;$(Join-Path $QtRoot 'bin');$env:PATH"
 & $WinDeployQt --release --compiler-runtime --qmldir (Join-Path $ProjectRoot "qml") $DeployExecutable
 if ($LASTEXITCODE -ne 0) {
     throw "Qt 依赖部署失败，退出码 $LASTEXITCODE"

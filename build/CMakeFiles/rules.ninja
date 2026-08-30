@@ -17,7 +17,7 @@
 rule CXX_COMPILER__KeilPluginStudio_unscanned_Release
   depfile = $DEP_FILE
   deps = gcc
-  command = ${LAUNCHER}${CODE_CHECK}E:\QT\Tools\mingw1120_64\bin\c++.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  command = ${LAUNCHER}${CODE_CHECK}I:\QT\Tools\mingw1120_64\bin\c++.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
   description = Building CXX object $out
 
 
@@ -27,7 +27,7 @@ rule CXX_COMPILER__KeilPluginStudio_unscanned_Release
 rule RC_COMPILER__KeilPluginStudio_unscanned_Release
   depfile = $DEP_FILE
   deps = gcc
-  command = ${LAUNCHER}${CODE_CHECK}E:\QT\Tools\mingw1120_64\bin\windres.exe -O coff $DEFINES $INCLUDES $FLAGS $in $out
+  command = ${LAUNCHER}${CODE_CHECK}I:\QT\Tools\mingw1120_64\bin\windres.exe -O coff $DEFINES $INCLUDES $FLAGS $in $out
   description = Building RC object $out
 
 
@@ -35,7 +35,7 @@ rule RC_COMPILER__KeilPluginStudio_unscanned_Release
 # Rule for linking CXX executable.
 
 rule CXX_EXECUTABLE_LINKER__KeilPluginStudio_Release
-  command = C:\Windows\system32\cmd.exe /C "$PRE_LINK && E:\QT\Tools\mingw1120_64\bin\c++.exe $FLAGS $LINK_FLAGS $in -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
+  command = C:\WINDOWS\system32\cmd.exe /C "$PRE_LINK && I:\QT\Tools\mingw1120_64\bin\c++.exe $FLAGS $LINK_FLAGS $in -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
   description = Linking CXX executable $TARGET_FILE
   restat = $RESTAT
 
@@ -46,7 +46,7 @@ rule CXX_EXECUTABLE_LINKER__KeilPluginStudio_Release
 rule CXX_COMPILER__KeilPluginCoreTest_unscanned_Release
   depfile = $DEP_FILE
   deps = gcc
-  command = ${LAUNCHER}${CODE_CHECK}E:\QT\Tools\mingw1120_64\bin\c++.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  command = ${LAUNCHER}${CODE_CHECK}I:\QT\Tools\mingw1120_64\bin\c++.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
   description = Building CXX object $out
 
 
@@ -54,7 +54,7 @@ rule CXX_COMPILER__KeilPluginCoreTest_unscanned_Release
 # Rule for linking CXX executable.
 
 rule CXX_EXECUTABLE_LINKER__KeilPluginCoreTest_Release
-  command = C:\Windows\system32\cmd.exe /C "$PRE_LINK && E:\QT\Tools\mingw1120_64\bin\c++.exe $FLAGS $LINK_FLAGS $in -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
+  command = C:\WINDOWS\system32\cmd.exe /C "$PRE_LINK && I:\QT\Tools\mingw1120_64\bin\c++.exe $FLAGS $LINK_FLAGS $in -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
   description = Linking CXX executable $TARGET_FILE
   restat = $RESTAT
 
@@ -71,7 +71,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = E:\QT\Tools\CMake_64\bin\cmake.exe --regenerate-during-build -SF:\mine\code\qt\KeilPluginStudio -BF:\mine\code\qt\KeilPluginStudio\build
+  command = I:\QT\Tools\CMake_64\bin\cmake.exe --regenerate-during-build -SJ:\mine\code\QT\keil_-plugin -BJ:\mine\code\QT\keil_-plugin\build
   description = Re-running CMake...
   generator = 1
 
@@ -80,7 +80,7 @@ rule RERUN_CMAKE
 # Rule for cleaning additional files.
 
 rule CLEAN_ADDITIONAL
-  command = E:\QT\Tools\CMake_64\bin\cmake.exe -DCONFIG=$CONFIG -P CMakeFiles\clean_additional.cmake
+  command = I:\QT\Tools\CMake_64\bin\cmake.exe -DCONFIG=$CONFIG -P CMakeFiles\clean_additional.cmake
   description = Cleaning additional files...
 
 
@@ -88,7 +88,7 @@ rule CLEAN_ADDITIONAL
 # Rule for cleaning all built files.
 
 rule CLEAN
-  command = E:\QT\Tools\Ninja\ninja.exe $FILE_ARG -t clean $TARGETS
+  command = I:\QT\Tools\Ninja\ninja.exe $FILE_ARG -t clean $TARGETS
   description = Cleaning all built files...
 
 
@@ -96,6 +96,6 @@ rule CLEAN
 # Rule for printing all primary targets available.
 
 rule HELP
-  command = E:\QT\Tools\Ninja\ninja.exe -t targets
+  command = I:\QT\Tools\Ninja\ninja.exe -t targets
   description = All primary targets available:
 

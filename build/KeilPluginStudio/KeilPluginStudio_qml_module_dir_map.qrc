@@ -1,6 +1,6 @@
 <RCC>
   <qresource prefix="/">
-    <file alias="/qt/qml/KeilPluginStudio">F:/mine/code/qt/KeilPluginStudio/build/KeilPluginStudio</file>
+    <file alias="/qt/qml/KeilPluginStudio">J:/mine/code/QT/keil_-plugin/build/KeilPluginStudio</file>
 
   </qresource>
 </RCC>

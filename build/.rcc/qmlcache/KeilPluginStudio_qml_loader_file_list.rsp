@@ -1,7 +1,7 @@
 --resource
-F:/mine/code/qt/KeilPluginStudio/build/.rcc/qmake_KeilPluginStudio.qrc
+J:/mine/code/QT/keil_-plugin/build/.rcc/qmake_KeilPluginStudio.qrc
 --resource
-F:/mine/code/qt/KeilPluginStudio/build/.rcc/KeilPluginStudio_raw_qml_0.qrc
+J:/mine/code/QT/keil_-plugin/build/.rcc/KeilPluginStudio_raw_qml_0.qrc
 /qt/qml/KeilPluginStudio/qml/Main.qml
 /qt/qml/KeilPluginStudio/qml/Theme.qml
 /qt/qml/KeilPluginStudio/qml/components/AppButton.qml

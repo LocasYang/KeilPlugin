@@ -1,6 +1,7 @@
 ﻿param(
-    [string]$QtRoot = "E:\QT\6.6.3\mingw_64",
-    [string]$QtToolsRoot = "E:\QT\Tools",
+    [string]$QtVersion = "6.6.3",
+    [string]$QtRoot = "",
+    [string]$QtToolsRoot = "",
     [switch]$RunTests
 )
 
@@ -8,10 +9,14 @@ $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [Console]::OutputEncoding
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$MingwBin    = Join-Path $QtToolsRoot "mingw1120_64\bin"
-$NinjaExe    = Join-Path $QtToolsRoot "Ninja\ninja.exe"
-$CmakeExe    = Join-Path $QtToolsRoot "CMake_64\bin\cmake.exe"
-$WinDeployQt = Join-Path $QtRoot "bin\windeployqt.exe"
+
+. (Join-Path $PSScriptRoot "qt-toolchain.ps1")
+$toolchain = Get-QtToolchain -Version $QtVersion -QtRoot $QtRoot -QtToolsRoot $QtToolsRoot
+$QtRoot      = $toolchain.QtRoot
+$MingwBin    = $toolchain.MingwBin
+$NinjaExe    = $toolchain.NinjaExe
+$CmakeExe    = $toolchain.CmakeExe
+$WinDeployQt = $toolchain.WinDeployQt
 
 $env:PATH = "$MingwBin;$(Join-Path $QtRoot 'bin');$env:PATH"
 

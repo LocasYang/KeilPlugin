@@ -9,7 +9,7 @@ endif()
 
 _qt_internal_deploy_qml_imports_for_target(
     ${__qt_opts}
-    IMPORTS_FILE "F:/mine/code/qt/KeilPluginStudio/build/.qt_plugins/Qt6_QmlPlugins_Imports_KeilPluginStudio.cmake"
+    IMPORTS_FILE "J:/mine/code/QT/keil_-plugin/build/.qt_plugins/Qt6_QmlPlugins_Imports_KeilPluginStudio.cmake"
     PLUGINS_FOUND __qt_internal_plugins_found
     QML_DIR     "${arg_QML_DIR}"
     PLUGINS_DIR "${arg_PLUGINS_DIR}"
