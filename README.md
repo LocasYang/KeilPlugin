@@ -156,14 +156,14 @@ FLASH 汇总行和链接器总量为准。
 
 ER_ITCM 等区域即使归入 UNKNOWN，也会保留在报告中，不会被过滤。
 
-![Keil Build Output 内存区域占用状态条](shots/7_memory_region_bars.png)
+![输入图片说明](shots/7_memory_region_bars.png)
 
 ### 6.4 文件占用统计
 
 源文件路径能够与 .uvprojx 的 FilePath 唯一对应时，报告优先显示工程相对路径；
 无法唯一关联时显示目标文件或库成员名称。
 
-![文件级 RAM 与 FLASH 占用统计](shots/8_memory_file_usage.png)
+![输入图片说明](shots/8_memory_file_usage.png)
 
 ## 7. 工程变更与安全边界
 
