@@ -37,6 +37,25 @@ FLASH/RAM 存储占用报告，并完成 Bootloader 与应用程序 Intel HEX �
 本工具不会修改固件源代码、Scatter 文件、链接参数或器件配置。只有在用户执行
 “配置到工程”或“从工程移除”时，才会修改 .uvprojx 中的 After Build 用户命令。
 
+### 2.1 软件界面示意
+
+未载入工程时，“工程功能”页面用于查看交付组件、功能说明、实施要求和工程配置状态。
+
+![KeilPlugin Studio 工程功能总览](shots/1_software_overview.png)
+
+载入 .uvprojx、.uvmpw 或工程目录后，软件会识别工作区内的构建目标、目标器件和
+Flash/RAM 存储占用分析集成状态，并可按目标配置或移除 After Build 命令。
+
+![KeilPlugin Studio 工程集成状态](shots/2_project_integration.png)
+
+“存储占用分析”页面展示当前 Target 的 FLASH/RAM 总量、链接器镜像组成以及
+高占用目标文件和库；页面数据来自最近一次有效的 armlink MAP 文件。
+
+![KeilPlugin Studio 存储占用分析](shots/3_memory_analysis.png)
+
+以上界面中的工程路径、Target 名称和占用数据仅用于功能示意，实际内容以现场载入的
+Keil 工程及其最新构建结果为准。
+
 ## 3. 发布包结构
 
 ~~~text
@@ -105,15 +124,35 @@ Keil 退出时可能使用旧配置覆盖本软件写入的内容。
 
 ## 6. 存储报告说明
 
-每次 Build/Rebuild 完成后，Build Output 按以下顺序输出：
+当前 v1.3.0 采用单次统一输出，不再分别调用两个工具打印重复的内存占用信息。
+Keil 自己会先显示 After Build 命令，随后由本软件输出以下五部分：
 
-1. 工程、Target、器件和 LTO 状态。
-2. 完整文件/目标文件 RAM、FLASH 占用表。
-3. 镜像总量 Image totals。
-4. Memory execution regions。
-5. RAM/FLASH 高占用文件 Top-N。
+1. 工程、Target、器件和 LTO 状态；
+2. 完整 FILE(s) RAM/FLASH 占用表；
+3. Image totals 镜像总量；
+4. Memory execution regions；
+5. File / object memory usage (top N)。
 
-### 6.1 文件增量标记
+### 6.1 当前实际输出样式
+
+以下截图来自当前 v1.3.0 的真实 Keil Build Output。报告首先输出工程、Target、器件和
+LTO 状态，随后按链接器 Object Name 顺序输出完整 FILE(s) RAM/FLASH 占用表。
+
+![统一存储报告：完整文件占用表](shots/4_memory_report_files.png)
+
+完整文件表之后统一输出 Image totals、Memory execution regions 和 Top-N 文件/对象热点，
+避免旧方案重复显示两套 RAM/FLASH 占用结果。
+
+![统一存储报告：镜像总量、执行区域与 Top-N](shots/5_memory_report_summary.png)
+
+说明：After Build 命令末尾可能包含 **--restore-b64**。这是从 keil-build-viewer
+迁移时保存的可逆恢复信息，不会形成第二份报告，也不影响正常编译。
+
+### 6.2 完整 FILE(s) 表与增量标记
+
+第一张 FILE(s) 表按链接器 Object Name 顺序完整列出当前参与链接的工程目标文件，
+并同时显示 RAM 和 FLASH 字节数。源文件能够与 .uvprojx 的 FilePath 唯一对应时，
+优先显示工程相对路径；无法唯一关联时显示目标文件名。
 
 完整文件表会与上一次构建快照比较：
 
@@ -122,6 +161,8 @@ Keil 退出时可能使用旧配置覆盖本软件写入的内容。
 | [NEW] | 本次构建新增的文件或目标对象 |
 | [+N] | 相比上一次构建增加 N 字节 |
 | [-N] | 相比上一次构建减少 N 字节 |
+
+没有变化时不追加标记，因此上面的实际输出中各行只显示当前 RAM/FLASH 数值。
 
 历史快照保存在工程旁：
 
@@ -132,38 +173,27 @@ Keil 退出时可能使用旧配置覆盖本软件写入的内容。
 删除该文件不会影响编译，但会丢失下一次报告的增量比较基线。首次迁移时，如果工程目录
 存在 keil-build-viewer-record.txt，本软件会尝试使用其数据建立初始比较基线。
 
-### 6.2 镜像总量
+### 6.3 Image totals
 
-~~~text
-Image totals:
-FLASH  [#...................]  15.0 KB / 512.0 KB (2.9%)
-RAM    [#...................]   6.4 KB /  96.0 KB (6.7%)
-明细 : Code=14160  RO-data=896  RW-data=4984  ZI-data=1608
-~~~
-
-RW-data 会存放在 FLASH 镜像中，并在启动后复制到 RAM。FLASH 最终占用应以
+Image totals 只汇总一次完整镜像：FLASH 行表示最终镜像占用，RAM 行表示运行期数据占用。
+RW-data 会存放在 FLASH 镜像中，并在启动后复制到 RAM，因此 FLASH 最终占用应以
 FLASH 汇总行和链接器总量为准。
 
-### 6.3 Execution Region
+### 6.4 Memory execution regions
 
-报告会解析 MAP 中的 Execution Region，并列出：
+执行区域表逐行显示起止地址、状态条、使用率、已用容量、总容量和区域名称。
+区域按当前解析结果分为 **ROM / FLASH** 与 **RAM**；无法可靠分类时才增加
+**UNKNOWN** 分组。
 
-- 起止地址；
-- 使用率和状态条；
-- 已用容量与总容量；
-- 区域名称；
-- ROM/FLASH、RAM 和无法仅按地址判定的 UNKNOWN 区域。
+当 MAP 中存在 **ER_ITCM**、CCM 或其他自定义 Execution Region 时，软件会保留该区域；
+能够识别其加载/执行属性时归入 **ROM / FLASH** 或 **RAM**，无法可靠分类时归入
+**UNKNOWN**，不会因区域名称不在常见列表中而遗漏。
 
-ER_ITCM 等区域即使归入 UNKNOWN，也会保留在报告中，不会被过滤。
+### 6.5 Top-N 文件/对象热点
 
-![Keil Build Output 内存区域占用状态条](shots/7_memory_region_bars.png)
-
-### 6.4 文件占用统计
-
-源文件路径能够与 .uvprojx 的 FilePath 唯一对应时，报告优先显示工程相对路径；
-无法唯一关联时显示目标文件或库成员名称。
-
-![文件级 RAM 与 FLASH 占用统计](shots/8_memory_file_usage.png)
+最后一张表按文件或对象占用排序，RAM 与 FLASH 数据在同一行显示。默认输出前 20 项，
+其余数量使用“... N more object(s)”提示；可通过 **--top N** 调整，使用 **--top 0**
+时只关闭该热点表，不影响完整 FILE(s) 表、Image totals 和 Execution Region。
 
 ## 7. 工程变更与安全边界
 
@@ -272,7 +302,7 @@ KeilPluginStudio.exe --wrap-b64 <base64> "#L" --project "<uvprojx>"
 | KeilPluginCoreTest | 1/1 通过 |
 | 真实 GD32 AC6 MAP 回归 | 通过 |
 | 完整文件增量、Image totals、Execution Region、Top-N | 通过 |
-| ER_ITCM/UNKNOWN 区域保留 | 通过 |
+| ER_ITCM 及自定义 Execution Region 保留 | 通过 |
 | keil-build-viewer 合并及移除恢复 | 通过 |
 | Intel HEX 地址重叠保护 | 通过 |
 | 自包含发布目录打包 | 通过 |
@@ -371,7 +401,7 @@ v1.3.0 主要更新：
 - 将结果通知居中显示，避免遮挡页面底部操作按钮。
 - 统一 Build Output 报告，避免文件占用和内存区域重复输出。
 - 增加完整文件增量、Image totals、Execution Region 和 Top-N 组合报告。
-- 保留 ER_ITCM 等 UNKNOWN 执行区域。
+- 保留 ER_ITCM 等执行区域，仅在无法可靠分类时输出 UNKNOWN 分组。
 - 支持从 keil-build-viewer 迁移并可逆恢复。
 - 加固工程搬迁后的构建和发布流程。
 
