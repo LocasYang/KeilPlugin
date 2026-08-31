@@ -121,7 +121,7 @@ Item {
                 Layout.fillWidth: true
                 text: usageCard.cap > 0
                       ? "剩余 " + root.fmtKB(Math.max(0, usageCard.cap - usageCard.used))
-                      : "未在 uvprojx 中找到 IROM/IRAM 容量"
+                      : "工程配置中未识别到 IROM/IRAM 容量"
                 color: Theme.textTertiary
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -223,7 +223,7 @@ Item {
             spacing: 10
 
             Text {
-                text: "占用报告"
+                text: "存储占用分析"
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 22
@@ -248,7 +248,7 @@ Item {
                 compact: true
                 textPixelSize: 12
                 leadingSymbol: "↻"
-                text: "重新解析"
+                text: "刷新分析"
                 enabled: PluginManager.projectLoaded
                 onClicked: {
                     PluginManager.reloadProject()
@@ -265,8 +265,8 @@ Item {
                 anchors.fill: parent
                 visible: !PluginManager.projectLoaded
                 symbol: "📂"
-                title: "尚未打开 Keil 工程"
-                hint: "打开 .uvprojx / .uvmpw 后即可查看编译产物占用"
+                title: "尚未载入 Keil 工程"
+                hint: "载入 .uvprojx / .uvmpw 后可分析最近一次编译结果"
             }
 
             DataUnavailableState {
@@ -275,7 +275,7 @@ Item {
                          && (!root.report || !root.report.ok)
                 symbol: "◫"
                 accent: Theme.warning
-                title: root.report && root.report.reason ? "报告不可用" : "暂无报告"
+                title: root.report && root.report.reason ? "分析结果不可用" : "暂无分析结果"
                 hint: root.report && root.report.reason ? root.report.reason : ""
             }
 
@@ -298,14 +298,14 @@ Item {
 
                         UsageCard {
                             Layout.fillWidth: true
-                            label: "Flash (ROM) 占用"
+                            label: "FLASH 镜像占用"
                             used: root.report && root.report.ok ? root.report.romUsed : 0
                             cap: root.report && root.report.ok ? root.report.flashCap : 0
                         }
 
                         UsageCard {
                             Layout.fillWidth: true
-                            label: "RAM 占用"
+                            label: "RAM 运行占用"
                             used: root.report && root.report.ok ? root.report.ramUsed : 0
                             cap: root.report && root.report.ok ? root.report.ramCap : 0
                         }
@@ -322,7 +322,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "段明细（未压缩口径）"
+                                text: "镜像组成（链接器统计）"
                                 color: Theme.textPrimary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 14
@@ -381,7 +381,7 @@ Item {
                                 visible: root.report && root.report.ok
                                          && (root.report.code + root.report.roData
                                              + root.report.rwData > root.report.romUsed)
-                                text: "RW 数据压缩存放，实际占用以 Flash 行为准"
+                                text: "RW-data 在 FLASH 中按镜像形式存放，最终占用以 FLASH 汇总值为准"
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -401,7 +401,7 @@ Item {
                             spacing: 10
 
                             Text {
-                                text: "占用最大的目标文件"
+                                text: "高占用目标文件与库"
                                 color: Theme.textPrimary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 14
@@ -414,13 +414,13 @@ Item {
 
                                 TopList {
                                     Layout.fillWidth: true
-                                    title: "Top ROM"
+                                    title: "FLASH 排名"
                                     byRom: true
                                 }
 
                                 TopList {
                                     Layout.fillWidth: true
-                                    title: "Top RAM"
+                                    title: "RAM 排名"
                                     byRom: false
                                 }
                             }
@@ -429,7 +429,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: root.report && root.report.ok ? "map: " + root.report.mapPath : ""
+                        text: root.report && root.report.ok ? "MAP 文件：" + root.report.mapPath : ""
                         color: Theme.textTertiary
                         font.family: "Consolas"
                         font.pixelSize: 10

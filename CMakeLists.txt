@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(KeilPluginStudio VERSION 0.1.0 LANGUAGES CXX)
+project(KeilPluginStudio VERSION 1.3.0 LANGUAGES CXX)
 
 include(CTest)
 
@@ -102,6 +102,9 @@ add_custom_command(TARGET KeilPluginStudio POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
             "${KEIL_PLUGIN_STUDIO_DIST_DIR}/README.md"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/shots"
+            "${KEIL_PLUGIN_STUDIO_DIST_DIR}/shots"
     COMMENT "Synchronizing KeilPluginStudio.exe to dist"
     VERBATIM
 )

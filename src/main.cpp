@@ -3,12 +3,18 @@
 #include <QDirIterator>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QHash>
 #include <QIcon>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QSGRendererInterface>
+#include <QSet>
+#include <QSaveFile>
 #include <QSurfaceFormat>
 #include <QTimer>
 
@@ -159,28 +165,299 @@ QString percentText(qint64 used, qint64 cap)
     return QStringLiteral(" (%1%)").arg(100.0 * used / cap, 0, 'f', 1);
 }
 
-// Port of the reference tool's report layout so the Build Output keeps the
-// same look as before.
-QString formatReportTarget(const KeilTarget &target, const MapSummary &summary, int top,
+int regionTypeOrder(MemoryRegionType type)
+{
+    switch (type) {
+    case MemoryRegionType::Rom:
+        return 0;
+    case MemoryRegionType::Ram:
+        return 1;
+    case MemoryRegionType::Unknown:
+        return 2;
+    }
+    return 2;
+}
+
+QString regionTypeText(MemoryRegionType type)
+{
+    switch (type) {
+    case MemoryRegionType::Rom:
+        return QStringLiteral("ROM / FLASH");
+    case MemoryRegionType::Ram:
+        return QStringLiteral("RAM");
+    case MemoryRegionType::Unknown:
+        return QStringLiteral("OTHER");
+    }
+    return QStringLiteral("OTHER");
+}
+
+QString hexAddress(quint64 value)
+{
+    return QStringLiteral("0x%1").arg(QString::number(value, 16).toUpper()
+                                          .rightJustified(8, QLatin1Char('0')));
+}
+
+QString regionSizeText(quint64 bytes)
+{
+    return QStringLiteral("%1 KiB(%2)")
+        .arg(bytes / 1024.0, 0, 'f', 2)
+        .arg(QString::number(bytes, 16).toUpper().rightJustified(8, QLatin1Char('0')));
+}
+
+QString elideMiddle(const QString &text, int width)
+{
+    if (text.size() <= width)
+        return text.leftJustified(width);
+    const int left = (width - 3) / 2;
+    const int right = width - 3 - left;
+    return (text.left(left) + QStringLiteral("...") + text.right(right)).leftJustified(width);
+}
+
+QString centered(const QString &text, int width)
+{
+    if (text.size() >= width)
+        return text.left(width);
+    const int leftPadding = (width - text.size()) / 2;
+    return QString(leftPadding, QLatin1Char(' '))
+           + text
+           + QString(width - text.size() - leftPadding, QLatin1Char(' '));
+}
+
+QString objectStem(const QString &name)
+{
+    static const QRegularExpression re(
+        QStringLiteral("([^/\\\\()]+)\\.(?:o|obj)(?=\\)|$)"),
+        QRegularExpression::CaseInsensitiveOption);
+    QString stem;
+    auto it = re.globalMatch(name);
+    while (it.hasNext())
+        stem = it.next().captured(1).toLower();
+    return stem;
+}
+
+QHash<QString, QString> sourceLabels(const KeilTarget &target)
+{
+    QHash<QString, QString> labels;
+    QSet<QString> ambiguous;
+    const QDir projectDir(QFileInfo(target.uvprojx).absolutePath());
+    for (const QString &source : target.sourceFiles) {
+        const QString stem = QFileInfo(source).completeBaseName().toLower();
+        if (stem.isEmpty() || ambiguous.contains(stem))
+            continue;
+        if (labels.contains(stem)) {
+            labels.remove(stem);
+            ambiguous.insert(stem);
+            continue;
+        }
+        labels.insert(stem, QDir::toNativeSeparators(projectDir.relativeFilePath(source)));
+    }
+    return labels;
+}
+
+QString componentLabel(const MapComponent &component,
+                       const QHash<QString, QString> &labels)
+{
+    const QString source = labels.value(objectStem(component.name));
+    return source.isEmpty() ? component.name : source;
+}
+
+struct MemoryHistory {
+    bool hasBaseline = false;
+    QString path;
+    QHash<QString, MapComponent> components;
+};
+
+QString historyKey(const QString &objectName)
+{
+    return objectName.trimmed().toLower();
+}
+
+QString memoryHistoryPath(const KeilTarget &target)
+{
+    if (target.uvprojx.isEmpty())
+        return QString();
+    QString targetId = target.outputName.isEmpty() ? target.name : target.outputName;
+    targetId.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_.-]+")),
+                     QStringLiteral("_"));
+    if (targetId.isEmpty())
+        targetId = QStringLiteral("target");
+    return QDir(QFileInfo(target.uvprojx).absolutePath())
+        .absoluteFilePath(QStringLiteral(".keilpluginstudio-memory-%1.json").arg(targetId));
+}
+
+MemoryHistory loadMemoryHistory(const KeilTarget &target)
+{
+    MemoryHistory history;
+    history.path = memoryHistoryPath(target);
+    if (history.path.isEmpty())
+        return history;
+
+    QFile file(history.path);
+    if (file.open(QIODevice::ReadOnly)) {
+        const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+        const QJsonObject entries = document.object().value(QStringLiteral("objects")).toObject();
+        for (auto it = entries.constBegin(); it != entries.constEnd(); ++it) {
+            const QJsonObject values = it.value().toObject();
+            MapComponent component;
+            component.name = it.key();
+            component.ram = static_cast<qint64>(values.value(QStringLiteral("ram")).toDouble());
+            component.rom = static_cast<qint64>(values.value(QStringLiteral("flash")).toDouble());
+            history.components.insert(historyKey(it.key()), component);
+        }
+        history.hasBaseline = !history.components.isEmpty();
+        return history;
+    }
+
+    // Smooth migration from keil-build-viewer: its record file contains the
+    // preceding object table and can seed the first unified delta report.
+    QFile legacy(QDir(QFileInfo(target.uvprojx).absolutePath())
+                     .absoluteFilePath(QStringLiteral("keil-build-viewer-record.txt")));
+    if (!legacy.open(QIODevice::ReadOnly))
+        return history;
+    const QString text = QString::fromLocal8Bit(legacy.readAll());
+    static const QRegularExpression rowRe(
+        QStringLiteral("^\\s*(\\d+)\\s+\\d+\\s+(\\d+)\\s+(\\d+)\\s+(\\d+)"
+                       "\\s+\\d+\\s+(\\S+\\.(?:o|obj))\\s*$"),
+        QRegularExpression::MultilineOption | QRegularExpression::CaseInsensitiveOption);
+    auto rows = rowRe.globalMatch(text);
+    while (rows.hasNext()) {
+        const QRegularExpressionMatch row = rows.next();
+        MapComponent component;
+        component.name = row.captured(5);
+        component.rom = row.captured(1).toLongLong() + row.captured(2).toLongLong()
+                        + row.captured(3).toLongLong();
+        component.ram = row.captured(3).toLongLong() + row.captured(4).toLongLong();
+        history.components.insert(historyKey(component.name), component);
+    }
+    history.hasBaseline = !history.components.isEmpty();
+    return history;
+}
+
+void saveMemoryHistory(const MemoryHistory &history, const MapSummary &summary)
+{
+    if (history.path.isEmpty())
+        return;
+    QJsonObject objects;
+    for (const MapComponent &component : summary.objectComponents) {
+        QJsonObject values;
+        values.insert(QStringLiteral("ram"), component.ram);
+        values.insert(QStringLiteral("flash"), component.rom);
+        objects.insert(historyKey(component.name), values);
+    }
+    QJsonObject root;
+    root.insert(QStringLiteral("version"), 1);
+    root.insert(QStringLiteral("objects"), objects);
+    QSaveFile file(history.path);
+    if (!file.open(QIODevice::WriteOnly))
+        return;
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.commit();
+}
+
+QString deltaMarker(qint64 current, qint64 previous, bool existed, bool hasBaseline)
+{
+    if (!hasBaseline)
+        return QString();
+    if (!existed)
+        return QStringLiteral("[NEW]");
+    const qint64 delta = current - previous;
+    if (delta == 0)
+        return QString();
+    return QStringLiteral("[%1%2]").arg(delta > 0 ? QStringLiteral("+") : QString())
+                                   .arg(delta);
+}
+
+QString memoryCell(qint64 current, qint64 previous, bool existed, bool hasBaseline)
+{
+    return QStringLiteral("%1  %2")
+        .arg(QString::number(current).rightJustified(10),
+             deltaMarker(current, previous, existed, hasBaseline).leftJustified(10));
+}
+
+QVector<MapComponent> topMemoryComponents(const MapSummary &summary, int limit)
+{
+    QVector<MapComponent> components = summary.components;
+    const double romTotal = qMax<qint64>(1, summary.totalROM);
+    const double ramTotal = qMax<qint64>(1, summary.totalRW);
+    std::sort(components.begin(), components.end(),
+              [romTotal, ramTotal](const MapComponent &a, const MapComponent &b) {
+                  const double scoreA = qMax(a.rom / romTotal, a.ram / ramTotal);
+                  const double scoreB = qMax(b.rom / romTotal, b.ram / ramTotal);
+                  if (!qFuzzyCompare(scoreA + 1.0, scoreB + 1.0))
+                      return scoreA > scoreB;
+                  return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
+              });
+    if (limit >= 0 && components.size() > limit)
+        components.erase(components.begin() + limit, components.end());
+    return components;
+}
+
+// Text report written into Keil Build Output. Aggregate image totals remain
+// first for compatibility, followed by execution-region bars and a unified
+// per-file RAM/FLASH table.
+QString formatReportTarget(const KeilTarget &target, const MapSummary &summary,
+                           const MemoryHistory &history, int top,
                            qint64 flashOverride, qint64 ramOverride)
 {
     const qint64 flashCap = flashOverride > 0 ? flashOverride : target.flashCap;
     const qint64 ramCap = ramOverride > 0 ? ramOverride : target.ramCap;
     const qint64 romUsed = summary.totalROM;
     const qint64 ramUsed = summary.totalRW;
+    const QHash<QString, QString> labels = sourceLabels(target);
 
     QStringList lines;
-    lines.append(QStringLiteral("Target '%1'  Device: %2  [%3]")
-                     .arg(target.name.isEmpty() ? QStringLiteral("-") : target.name,
+    const QString banner = QStringLiteral(" KeilPlugin Studio - Memory Report v1.3.0 ");
+    const int bannerSide = qMax(0, (130 - banner.size()) / 2);
+    lines.append(QStringLiteral("=").repeated(bannerSide) + banner
+                 + QStringLiteral("=").repeated(130 - bannerSide - banner.size()));
+    lines.append(QString());
+    const QString projectFile = target.uvprojx.isEmpty()
+            ? target.project
+            : QFileInfo(target.uvprojx).fileName();
+    const QString lto = target.ltoKnown
+            ? (target.ltoEnabled ? QStringLiteral("LTO enable") : QStringLiteral("LTO disable"))
+            : QStringLiteral("LTO unknown");
+    lines.append(QStringLiteral("[%1]  [%2]  [%3]  [%4]")
+                     .arg(projectFile,
+                          target.name.isEmpty() ? QStringLiteral("-") : target.name,
                           target.device.isEmpty() ? QStringLiteral("?") : target.device,
-                          target.project));
-    lines.append(QStringLiteral("  Map  : %1").arg(summary.mapPath));
-    lines.append(QStringLiteral("  Flash: %1 / %2%3  %4")
-                     .arg(MapParser::formatBytes(romUsed), sizeOrNA(flashCap),
-                          percentText(romUsed, flashCap), MapParser::percentBar(romUsed, flashCap)));
-    lines.append(QStringLiteral("  RAM  : %1 / %2%3  %4")
-                     .arg(MapParser::formatBytes(ramUsed), sizeOrNA(ramCap),
-                          percentText(ramUsed, ramCap), MapParser::percentBar(ramUsed, ramCap)));
+                          lto));
+    lines.append(QString());
+
+    if (!summary.objectComponents.isEmpty()) {
+        const QString separator = QStringLiteral("-").repeated(130);
+        lines.append(separator);
+        lines.append(QStringLiteral("%1|%2|%3|")
+                         .arg(centered(QStringLiteral("FILE(s)"), 74),
+                              centered(QStringLiteral("RAM (byte)"), 26),
+                              centered(QStringLiteral("FLASH (byte)"), 26)));
+        lines.append(separator);
+        for (const MapComponent &component : summary.objectComponents) {
+            const auto previous = history.components.constFind(historyKey(component.name));
+            const bool existed = previous != history.components.constEnd();
+            const qint64 previousRam = existed ? previous->ram : 0;
+            const qint64 previousRom = existed ? previous->rom : 0;
+            const QString label = componentLabel(component, labels) + QStringLiteral("():");
+            lines.append(QStringLiteral("%1|%2|%3|")
+                             .arg(elideMiddle(label, 74),
+                                  memoryCell(component.ram, previousRam, existed,
+                                             history.hasBaseline).leftJustified(26),
+                                  memoryCell(component.rom, previousRom, existed,
+                                             history.hasBaseline).leftJustified(26)));
+        }
+        lines.append(separator);
+        lines.append(QString());
+    }
+
+    lines.append(QStringLiteral("Image totals:"));
+    lines.append(QStringLiteral("  FLASH  %1  %2 / %3%4")
+                     .arg(MapParser::percentBar(romUsed, flashCap, 20),
+                          MapParser::formatBytes(romUsed), sizeOrNA(flashCap),
+                          percentText(romUsed, flashCap)));
+    lines.append(QStringLiteral("  RAM    %1  %2 / %3%4")
+                     .arg(MapParser::percentBar(ramUsed, ramCap, 20),
+                          MapParser::formatBytes(ramUsed), sizeOrNA(ramCap),
+                          percentText(ramUsed, ramCap)));
 
     if (summary.hasDetail) {
         const qint64 uncompressed = summary.code + summary.roData + summary.rwData;
@@ -195,6 +472,43 @@ QString formatReportTarget(const KeilTarget &target, const MapSummary &summary, 
                          .arg(note));
     }
 
+    if (!summary.regions.isEmpty()) {
+        QVector<MapMemoryRegion> regions = summary.regions;
+        std::sort(regions.begin(), regions.end(), [](const MapMemoryRegion &a,
+                                                     const MapMemoryRegion &b) {
+            const int typeA = regionTypeOrder(a.type);
+            const int typeB = regionTypeOrder(b.type);
+            return typeA == typeB ? a.base < b.base : typeA < typeB;
+        });
+
+        lines.append(QStringLiteral("Memory execution regions:"));
+        lines.append(QStringLiteral("  Memory Address Range      | Status Bar             |  Rate |"
+                                    " Used Size                | Total Size               | Name"));
+        lines.append(QStringLiteral("  ") + QStringLiteral("-").repeated(133));
+        int previousType = -1;
+        for (const MapMemoryRegion &region : regions) {
+            const int type = regionTypeOrder(region.type);
+            if (type != previousType) {
+                lines.append(QStringLiteral("  %1:").arg(regionTypeText(region.type)));
+                previousType = type;
+            }
+            const QString range = hexAddress(region.base) + QLatin1Char('-')
+                                  + hexAddress(region.base + region.total);
+            const double rate = region.total > 0
+                    ? 100.0 * static_cast<double>(region.used)
+                              / static_cast<double>(region.total)
+                    : 0.0;
+            lines.append(QStringLiteral("    %1 | %2 | %3% | %4 | %5 | %6")
+                             .arg(range.leftJustified(25),
+                                  MapParser::percentBar(static_cast<qint64>(region.used),
+                                                        static_cast<qint64>(region.total), 20),
+                                  QString::number(rate, 'f', 1).rightJustified(5),
+                                  regionSizeText(region.used).rightJustified(24),
+                                  regionSizeText(region.total).rightJustified(24),
+                                  region.name));
+        }
+    }
+
     if (flashCap > 0 && 100.0 * romUsed / flashCap >= 90.0)
         lines.append(QStringLiteral("  *** WARNING: Flash usage >= 90%, 剩余 %1")
                          .arg(MapParser::formatBytes(flashCap - romUsed)));
@@ -203,28 +517,25 @@ QString formatReportTarget(const KeilTarget &target, const MapSummary &summary, 
                          .arg(MapParser::formatBytes(ramCap - ramUsed)));
 
     if (top > 0 && !summary.components.isEmpty()) {
-        QVector<MapComponent> byRom = summary.components;
-        std::sort(byRom.begin(), byRom.end(),
-                  [](const MapComponent &a, const MapComponent &b) { return a.rom > b.rom; });
-        QVector<MapComponent> byRam = summary.components;
-        std::sort(byRam.begin(), byRam.end(),
-                  [](const MapComponent &a, const MapComponent &b) { return a.ram > b.ram; });
-
-        lines.append(QStringLiteral("  Top ROM modules:"));
-        for (int i = 0; i < byRom.size() && i < top; ++i) {
-            lines.append(QStringLiteral("    %1  %2  %3")
-                             .arg(byRom.at(i).name.leftJustified(28),
-                                  MapParser::formatBytes(byRom.at(i).rom).rightJustified(8),
-                                  MapParser::percentBar(byRom.at(i).rom, romUsed)));
+        const QVector<MapComponent> components = topMemoryComponents(summary, top);
+        lines.append(QStringLiteral("File / object memory usage (top %1):").arg(top));
+        lines.append(QStringLiteral("  %1 | %2 | %3")
+                         .arg(QStringLiteral("FILE(s)").leftJustified(54),
+                              QStringLiteral("RAM (byte)").rightJustified(12),
+                              QStringLiteral("FLASH (byte)").rightJustified(14)));
+        lines.append(QStringLiteral("  ") + QStringLiteral("-").repeated(86));
+        for (const MapComponent &component : components) {
+            lines.append(QStringLiteral("  %1 | %2 | %3")
+                             .arg(elideMiddle(componentLabel(component, labels), 54),
+                                  QString::number(component.ram).rightJustified(12),
+                                  QString::number(component.rom).rightJustified(14)));
         }
-        lines.append(QStringLiteral("  Top RAM modules:"));
-        for (int i = 0; i < byRam.size() && i < top; ++i) {
-            lines.append(QStringLiteral("    %1  %2  %3")
-                             .arg(byRam.at(i).name.leftJustified(28),
-                                  MapParser::formatBytes(byRam.at(i).ram).rightJustified(8),
-                                  MapParser::percentBar(byRam.at(i).ram, ramUsed)));
-        }
+        const int hidden = summary.components.size() - components.size();
+        if (hidden > 0)
+            lines.append(QStringLiteral("  ... %1 more object(s); use --top N to adjust")
+                             .arg(hidden));
     }
+    lines.append(QStringLiteral("=").repeated(130));
     return lines.join(QLatin1Char('\n'));
 }
 
@@ -250,7 +561,7 @@ struct CliConfig {
     QString mapOverride; // explicit .map path (--map), beats every auto guess
     QString wrap;        // verbatim wrapped command (--wrap)
     QString wrapB64;     // base64-wrapped command (--wrap-b64)
-    int top = 0;
+    int top = 20;
     qint64 flash = 0;
     qint64 ram = 0;
     bool quiet = false;
@@ -476,9 +787,10 @@ int runSizeReportCli(const QStringList &arguments)
         if (config.quiet) {
             printLine(formatQuietLine(entry.target, summary));
         } else {
-            printLine(formatReportTarget(entry.target, summary, config.top, config.flash,
-                                         config.ram));
-            printLine(QStringLiteral("-").repeated(72));
+            const MemoryHistory history = loadMemoryHistory(entry.target);
+            printLine(formatReportTarget(entry.target, summary, history, config.top,
+                                         config.flash, config.ram));
+            saveMemoryHistory(history, summary);
         }
     }
     return ok ? 0 : 2;

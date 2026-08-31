@@ -53,16 +53,16 @@ ApplicationWindow {
         projectFileDialog.open()
     }
 
-    // 插件 id -> StackLayout 页索引。新插件若自带报告/输出视图：
+    // 功能组件 id -> StackLayout 页索引。组件若自带报告/输出视图：
     // 在 descriptor 声明 viewLabel，并在这里登记页索引，
-    // 侧边栏“插件报告”子菜单会自动出现该项。
+    // 侧边栏“分析报告”子菜单会自动出现该项。
     property var pluginViewPages: ({ "keil-size-report": 1 })
 
     function pageForPlugin(pluginId) {
         return pluginViewPages[pluginId] !== undefined ? pluginViewPages[pluginId] : -1
     }
 
-    // 有独立报告视图的插件（按注册表自动生成子菜单项）。
+    // 有独立报告视图的功能组件（按注册表自动生成子菜单项）。
     readonly property var pluginViewItems: {
         const items = []
         const plugins = PluginManager.plugins
@@ -86,8 +86,8 @@ ApplicationWindow {
 
     FileDialog {
         id: projectFileDialog
-        title: "选择 Keil 工程 (uvprojx / uvmpw)"
-        nameFilters: ["Keil 工程 (*.uvprojx *.uvmpw)", "所有文件 (*)"]
+        title: "选择 Keil 工程文件"
+        nameFilters: ["Keil 工程文件 (*.uvprojx *.uvmpw)", "所有文件 (*)"]
         onAccepted: PluginManager.loadProject(selectedFile)
     }
 
@@ -205,7 +205,7 @@ ApplicationWindow {
                             }
 
                             Text {
-                                text: "Keil 工程插件工作台"
+                                text: "Keil 工程构建与交付工具"
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -227,7 +227,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: root.projectLoaded
                                       ? PluginManager.project.sourcePath
-                                      : "尚未打开 Keil 工程"
+                                      : "尚未载入 Keil 工程"
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -243,7 +243,7 @@ ApplicationWindow {
                                         (PluginManager.project.kind === "uvmpw" ? "多工程工作区"
                                          : PluginManager.project.kind === "dir" ? "工程目录"
                                          : "单工程")
-                                      : "点击右侧「打开工程」选择 .uvprojx / .uvmpw / 工程目录"
+                                      : "点击右侧「载入工程」选择 .uvprojx / .uvmpw 工程文件"
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -252,7 +252,7 @@ ApplicationWindow {
                         }
 
                         StatusPill {
-                            text: root.projectLoaded ? "工程已加载" : "未加载工程"
+                            text: root.projectLoaded ? "工程已载入" : "未载入工程"
                             accent: root.projectLoaded ? Theme.success : Theme.textTertiary
                         }
 
@@ -260,7 +260,7 @@ ApplicationWindow {
                             compact: true
                             textPixelSize: 12
                             leadingSymbol: "📂"
-                            text: "打开工程"
+                            text: "载入工程"
                             variant: "primary"
                             onClicked: root.openProjectDialog()
                         }
@@ -317,7 +317,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
 
                                         StatusPill {
-                                            text: "内置插件"
+                                            text: "交付组件"
                                             accent: Theme.primary
                                             dot: false
                                             scaleFactor: 0.9
@@ -335,7 +335,7 @@ ApplicationWindow {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "插件中心"
+                                        text: "工程功能"
                                         color: Theme.textPrimary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 15
@@ -344,7 +344,7 @@ ApplicationWindow {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "安装 / 卸载 / 查看详情"
+                                        text: "配置 / 分析 / 镜像生成"
                                         color: Theme.textSecondary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
@@ -362,7 +362,7 @@ ApplicationWindow {
                             Text {
                                 Layout.leftMargin: 8
                                 Layout.topMargin: 2
-                                text: "工作区"
+                                text: "功能导航"
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -375,7 +375,7 @@ ApplicationWindow {
 
                                 NavItem {
                                     width: 212
-                                    text: "插件中心"
+                                    text: "工程功能"
                                     symbol: "⧉"
                                     current: root.currentPage === 0
                                     onClicked: root.currentPage = 0
@@ -385,7 +385,7 @@ ApplicationWindow {
                                     width: 212
                                     height: visible ? 26 : 0
                                     visible: root.pluginViewItems.length > 0
-                                    text: "  插件报告"
+                                    text: "  分析报告"
                                     verticalAlignment: Text.AlignVCenter
                                     color: Theme.textTertiary
                                     font.family: Theme.fontFamily
@@ -415,8 +415,8 @@ ApplicationWindow {
 
                                 Repeater {
                                     model: [
-                                        { label: "运行日志", symbol: "▤", page: 2 },
-                                        { label: "设置", symbol: "⚙", page: 3 }
+                                        { label: "操作记录", symbol: "▤", page: 2 },
+                                        { label: "系统设置", symbol: "⚙", page: 3 }
                                     ]
 
                                     delegate: NavItem {
@@ -434,7 +434,7 @@ ApplicationWindow {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "v0.1.0 · Qt 6.6 · 原生集成"
+                                text: "v1.3.0 · Qt 6.6 · 本地运行"
                                 horizontalAlignment: Text.AlignHCenter
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
@@ -505,8 +505,8 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
 
                         Text {
-                            text: "目标 " + root.projectTargets.length + " · 插件 "
-                                  + PluginManager.plugins.length + " 个"
+                            text: "Target " + root.projectTargets.length + " · 功能组件 "
+                                  + PluginManager.plugins.length
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -538,7 +538,7 @@ ApplicationWindow {
             spacing: 12
 
             Text {
-                text: "主题外观"
+                text: "界面主题"
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 15
@@ -567,7 +567,7 @@ ApplicationWindow {
             }
 
             Text {
-                text: "主色令牌"
+                text: "界面主色"
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: 12
@@ -598,12 +598,13 @@ ApplicationWindow {
         }
     }
 
-    // Result toast, 350x72, centered, auto dismiss.
+    // Result toast: center it in the window so it never covers the bottom
+    // action row or status bar.
     Popup {
         id: toast
         parent: Overlay.overlay
-        x: (root.width - width) / 2
-        y: root.height - height - 46
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
         width: Math.min(350, root.width - 40)
         height: 72
         padding: 0

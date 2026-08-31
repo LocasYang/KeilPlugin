@@ -19,7 +19,7 @@ Item {
             spacing: 12
 
             Text {
-                text: "设置"
+                text: "系统设置"
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 22
@@ -38,7 +38,7 @@ Item {
                     spacing: 12
 
                     Text {
-                        text: "外观"
+                        text: "界面外观"
                         color: Theme.textPrimary
                         font.family: Theme.fontFamily
                         font.pixelSize: 15
@@ -64,7 +64,7 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         Text {
-                            text: "主色令牌"
+                            text: "界面主色"
                             color: Theme.textSecondary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -97,7 +97,7 @@ Item {
                 }
             }
 
-            // 插件扩展说明
+            // 工程交付说明
             AppCard {
                 Layout.fillWidth: true
                 padding: 18
@@ -109,7 +109,7 @@ Item {
                     spacing: 10
 
                     Text {
-                        text: "扩展新插件"
+                        text: "工程使用流程"
                         color: Theme.textPrimary
                         font.family: Theme.fontFamily
                         font.pixelSize: 15
@@ -118,7 +118,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "插件以 C++ 原生方式内置于应用，新增插件无需改动任何界面代码："
+                        text: "按以下流程完成工程配置与结果复核。配置工程前应先关闭 Keil："
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -129,33 +129,30 @@ Item {
                         Layout.fillWidth: true
                         implicitHeight: extCodeText.implicitHeight + 22
                         radius: Theme.radius
-                        color: Theme.dark ? "#0B0F1B" : "#0B0F1B"
+                        color: Theme.surfaceRaised
                         border.width: 1
-                        border.color: Theme.dark ? "#242B3E" : "#242B3E"
+                        border.color: Theme.divider
 
                         Text {
                             id: extCodeText
                             anchors.fill: parent
                             anchors.margins: 11
-                            text: "class MyPlugin : public KeilPlugin {\n"
-                                  + "    PluginDescriptor descriptor() const override;\n"
-                                  + "    // installProject / uninstallProject / targetInstalled / runTool\n"
-                                  + "};\n"
-                                  + "// 在 PluginRegistry 构造中注册:\n"
-                                  + "PluginRegistry::instance().registerPlugin(new MyPlugin);"
-                            color: "#CDD6E7"
-                            font.family: "Consolas"
-                            font.pixelSize: 11
-                            lineHeight: 1.3
-                            wrapMode: Text.NoWrap
+                            text: "1. 载入 .uvprojx 或 .uvmpw 工程文件。\n"
+                                  + "2. 在「工程功能」中核对构建目标与器件信息。\n"
+                                  + "3. 将存储分析功能配置到工程，重新打开 Keil 执行 Build/Rebuild。\n"
+                                  + "4. 在「存储占用分析」和「操作记录」中复核结果。"
+                            color: Theme.textPrimary
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            lineHeight: 1.45
+                            wrapMode: Text.WordWrap
                         }
                     }
 
                     Text {
                         Layout.fillWidth: true
-                        text: "插件通过能力声明（install / uninstall / report / run）描述自己，"
-                              + "插件中心会自动渲染详情、安装状态表与操作按钮；"
-                              + "「run」类插件可在详情页提供独立工具面板。"
+                        text: "工程集成仅修改 uvprojx 的 After Build 用户命令；写回前会校验 XML，"
+                              + "从工程移除时会恢复原有命令。Intel HEX 合并在本机独立执行，不修改 Keil 工程。"
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -177,7 +174,7 @@ Item {
                     spacing: 10
 
                     Text {
-                        text: "关于"
+                        text: "版本与运行环境"
                         color: Theme.textPrimary
                         font.family: Theme.fontFamily
                         font.pixelSize: 15
@@ -191,14 +188,14 @@ Item {
                         rowSpacing: 8
 
                         Text {
-                            text: "应用"
+                            text: "软件版本"
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "KeilPlugin Studio v0.1.0"
+                            text: "KeilPlugin Studio v1.3.0"
                             color: Theme.textPrimary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -206,14 +203,14 @@ Item {
                         }
 
                         Text {
-                            text: "运行环境"
+                            text: "运行框架"
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "Qt 6.6 / Qt Quick · 原生 C++（无 Python 依赖）"
+                            text: "Qt 6.6 / Qt Quick / C++17"
                             color: Theme.textPrimary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -221,14 +218,14 @@ Item {
                         }
 
                         Text {
-                            text: "界面语言"
+                            text: "交付方式"
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
                         }
 
                         Text {
-                            text: "设计令牌与 PowerConfig Studio 保持一致"
+                            text: "Windows 自包含目录 · 无 Python 依赖"
                             color: Theme.textPrimary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -236,7 +233,7 @@ Item {
                         }
 
                         Text {
-                            text: "命令行"
+                            text: "命令行接口"
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -253,8 +250,8 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "安装插件后，Keil 的 After Build 用户命令会调用本应用命令行模式，"
-                              + "在 Build Output 窗口自动打印 Flash/RAM 占用报告。"
+                        text: "工程配置完成后，Keil 的 After Build 用户命令会调用本软件的命令行接口，"
+                              + "并在 Build Output 窗口输出统一的 FLASH/RAM 存储分析报告。"
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 12

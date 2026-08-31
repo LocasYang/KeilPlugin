@@ -44,6 +44,17 @@ const QRegularExpression &wrapB64Re()
     return re;
 }
 
+// Replacement metadata used when an older memory-report hook is superseded:
+// the encoded command is intentionally not executed by the CLI. Uninstall can
+// still put the exact original command back into its slot.
+const QRegularExpression &restoreB64Re()
+{
+    static const QRegularExpression re(
+        QStringLiteral("--restore-b64\\s+([A-Za-z0-9+/=]+)\\s*$"),
+        QRegularExpression::DotMatchesEverythingOption);
+    return re;
+}
+
 QString base64Encode(const QString &text)
 {
     return QString::fromLatin1(text.toUtf8().toBase64());
@@ -82,6 +93,32 @@ QString xmlUnesc(QString value)
     value.replace(QStringLiteral("&quot;"), QLatin1String("\""));
     value.replace(QStringLiteral("&amp;"), QLatin1String("&"));
     return value;
+}
+
+bool isLegacyMemoryReportCommand(const QString &value)
+{
+    const QString lowered = xmlUnesc(value).toLower();
+    return lowered.contains(QLatin1String("keil-build-viewer"))
+           || lowered.contains(QLatin1String("keil_build_viewer"));
+}
+
+QString wrappedOriginal(const QString &value, bool *found = nullptr)
+{
+    if (found)
+        *found = false;
+    const QRegularExpressionMatch wrappedB64 = wrapB64Re().match(value);
+    if (wrappedB64.hasMatch()) {
+        if (found)
+            *found = true;
+        return base64Decode(wrappedB64.captured(1));
+    }
+    const QRegularExpressionMatch wrapped = wrapRe().match(value);
+    if (wrapped.hasMatch()) {
+        if (found)
+            *found = true;
+        return xmlUnesc(wrapped.captured(1));
+    }
+    return QString();
 }
 
 QString regexReplace(const QString &subject, const QRegularExpression &re,
@@ -155,7 +192,13 @@ bool containsToolMarker(const QString &text)
     return false;
 }
 
-QString hookCommand(const QString &uvprojxPath, const QString &wrap, bool wrapBase64)
+bool containsLegacyMemoryReport(const QString &text)
+{
+    return isLegacyMemoryReportCommand(text);
+}
+
+QString hookCommand(const QString &uvprojxPath, const QString &wrap, bool wrapBase64,
+                    const QString &restore)
 {
     const QString exe = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
     // "#L" is expanded by Keil to the current target's linker output (.axf),
@@ -174,6 +217,8 @@ QString hookCommand(const QString &uvprojxPath, const QString &wrap, bool wrapBa
     if (!uvprojxPath.isEmpty())
         command += QStringLiteral(" --project \"%1\"")
                        .arg(QDir::toNativeSeparators(QFileInfo(uvprojxPath).absoluteFilePath()));
+    if (!restore.isEmpty())
+        command += QStringLiteral(" --restore-b64 %1").arg(base64Encode(restore));
     return command;
 }
 
@@ -194,6 +239,15 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
                 const QString value = getSlot(updated, n);
                 if (!containsToolMarker(value))
                     continue;
+                const auto restoredLegacy = restoreB64Re().match(value);
+                if (restoredLegacy.hasMatch()) {
+                    updated = setSlot(updated, n,
+                                      xmlEsc(base64Decode(restoredLegacy.captured(1))), true);
+                    outcome.notes.append(
+                        QStringLiteral("%1 · slot%2: 已还原被替换的 keil-build-viewer 命令")
+                            .arg(projectBase).arg(n));
+                    continue;
+                }
                 const auto wrappedB64 = wrapB64Re().match(value);
                 if (wrappedB64.hasMatch()) {
                     updated = setSlot(updated, n, xmlEsc(base64Decode(wrappedB64.captured(1))), true);
@@ -231,6 +285,65 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
             }
             outcome.changed |= (updated != block);
             return updated;
+        }
+
+        // A legacy keil-build-viewer hook prints the same RAM/FLASH report as
+        // this plugin. Replace it instead of adding/wrapping another command,
+        // otherwise every build prints both reports. Keep the old command as
+        // non-executed metadata so uninstall remains reversible.
+        int directLegacySlot = 0;
+        int wrappedLegacySlot = 0;
+        QString legacyCommand;
+        for (int n : { 1, 2 }) {
+            const QString value = getSlot(block, n);
+            if (isLegacyMemoryReportCommand(value) && !containsToolMarker(value)) {
+                directLegacySlot = n;
+                legacyCommand = xmlUnesc(value);
+                break;
+            }
+            if (!containsToolMarker(value))
+                continue;
+            bool hasWrappedOriginal = false;
+            const QString original = wrappedOriginal(value, &hasWrappedOriginal);
+            if (hasWrappedOriginal && isLegacyMemoryReportCommand(original)) {
+                wrappedLegacySlot = n;
+                legacyCommand = original;
+                break;
+            }
+        }
+
+        const int replacementSlot = directLegacySlot != 0 ? directLegacySlot
+                                                           : wrappedLegacySlot;
+        if (replacementSlot != 0) {
+            QString migrated = block;
+            const QString command = hookCommand(uvprojxPath, QString(), false, legacyCommand);
+            migrated = setSlot(migrated, replacementSlot, xmlEsc(command), true);
+
+            // If an earlier app version already occupied the other slot,
+            // remove that duplicate hook. Preserve any unrelated command it
+            // wrapped, but do not run another copy of the legacy report.
+            for (int n : { 1, 2 }) {
+                if (n == replacementSlot)
+                    continue;
+                const QString value = getSlot(migrated, n);
+                if (!containsToolMarker(value)) {
+                    if (isLegacyMemoryReportCommand(value))
+                        migrated = setSlot(migrated, n, QString(), false);
+                    continue;
+                }
+                bool hasWrappedOriginal = false;
+                const QString original = wrappedOriginal(value, &hasWrappedOriginal);
+                if (hasWrappedOriginal && !isLegacyMemoryReportCommand(original))
+                    migrated = setSlot(migrated, n, xmlEsc(original), true);
+                else
+                    migrated = setSlot(migrated, n, QString(), false);
+            }
+
+            outcome.notes.append(
+                QStringLiteral("%1 · slot%2: 已用新版报告替换 keil-build-viewer，避免重复输出")
+                    .arg(projectBase).arg(replacementSlot));
+            outcome.changed = true;
+            return migrated;
         }
 
         if (containsToolMarker(block)) {

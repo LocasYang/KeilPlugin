@@ -233,6 +233,11 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
     QString userProg1;
     QString userProg2;
     QString cpuText;
+    bool armCompiler6 = false;
+    bool haveV6Lto = false;
+    bool v6Lto = false;
+    bool haveLegacyLto = false;
+    bool legacyLto = false;
     bool hasTarget = false;
 
     auto finalize = [&]() {
@@ -240,6 +245,13 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
             return;
         current.flashCap = sumRegionSizes(cpuText, "IROM");
         current.ramCap = sumRegionSizes(cpuText, "IRAM");
+        if (armCompiler6 && haveV6Lto) {
+            current.ltoKnown = true;
+            current.ltoEnabled = v6Lto;
+        } else if (haveLegacyLto) {
+            current.ltoKnown = true;
+            current.ltoEnabled = legacyLto;
+        }
         current.outputDir = joinDirectory(projectDir, current.outputDir);
         current.listingDir = joinDirectory(projectDir, current.listingDir);
         if (!current.linkerMapFile.isEmpty())
@@ -248,11 +260,18 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
         current.mapFound = !current.mapPath.isEmpty();
         current.hookInstalled =
                 UvprojxHook::containsToolMarker(userProg1 + QStringLiteral(" ") + userProg2);
+        current.legacyMemoryReportInstalled = UvprojxHook::containsLegacyMemoryReport(
+                userProg1 + QStringLiteral(" ") + userProg2);
         data.targets.append(current);
         hasTarget = false;
         userProg1.clear();
         userProg2.clear();
         cpuText.clear();
+        armCompiler6 = false;
+        haveV6Lto = false;
+        v6Lto = false;
+        haveLegacyLto = false;
+        legacyLto = false;
     };
 
     while (!reader.atEnd()) {
@@ -277,12 +296,30 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
                 current.device = reader.readElementText().trimmed();
             else if (name == QLatin1String("Cpu"))
                 cpuText = reader.readElementText();
+            else if (name == QLatin1String("uAC6"))
+                armCompiler6 = reader.readElementText().trimmed() == QLatin1String("1");
+            else if (name == QLatin1String("v6Lto")) {
+                haveV6Lto = true;
+                v6Lto = reader.readElementText().trimmed() == QLatin1String("1");
+            }
+            else if (name == QLatin1String("uLtcg")) {
+                haveLegacyLto = true;
+                legacyLto = reader.readElementText().trimmed() == QLatin1String("1");
+            }
             else if (name == QLatin1String("OutputDirectory"))
                 current.outputDir = reader.readElementText().trimmed();
             else if (name == QLatin1String("OutputName"))
                 current.outputName = reader.readElementText().trimmed();
             else if (name == QLatin1String("ListingPath"))
                 current.listingDir = reader.readElementText().trimmed();
+            else if (name == QLatin1String("FilePath")) {
+                const QString filePath = reader.readElementText().trimmed();
+                if (!filePath.isEmpty()) {
+                    const QString absolute = joinDirectory(projectDir, filePath);
+                    if (!current.sourceFiles.contains(absolute, Qt::CaseInsensitive))
+                        current.sourceFiles.append(absolute);
+                }
+            }
             else if (name == QLatin1String("LDads"))
                 insideLdads = true;
             else if (insideLdads && name == QLatin1String("Misc"))
@@ -521,10 +558,14 @@ QVariantList KeilProject::targets() const
         map.insert(QStringLiteral("device"), target.device);
         map.insert(QStringLiteral("flashCap"), target.flashCap);
         map.insert(QStringLiteral("ramCap"), target.ramCap);
+        map.insert(QStringLiteral("ltoKnown"), target.ltoKnown);
+        map.insert(QStringLiteral("ltoEnabled"), target.ltoEnabled);
         map.insert(QStringLiteral("outputDir"), target.outputDir);
         map.insert(QStringLiteral("outputName"), target.outputName);
         map.insert(QStringLiteral("linkerMapEnabled"), target.linkerMapEnabled);
         map.insert(QStringLiteral("hookInstalled"), target.hookInstalled);
+        map.insert(QStringLiteral("legacyMemoryReportInstalled"),
+                   target.legacyMemoryReportInstalled);
         map.insert(QStringLiteral("mapFound"), target.mapFound);
         map.insert(QStringLiteral("mapPath"), target.mapPath);
         list.append(map);

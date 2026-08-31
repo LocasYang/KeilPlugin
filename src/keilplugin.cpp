@@ -11,7 +11,7 @@ bool KeilPlugin::targetInstalled(const KeilTarget &target) const
 UvprojxHook::PatchOutcome KeilPlugin::installProject(const QString &uvprojxPath) const
 {
     UvprojxHook::PatchOutcome outcome;
-    outcome.error = QStringLiteral("该插件不提供工程安装能力");
+    outcome.error = QStringLiteral("该功能组件不支持写入工程配置");
     Q_UNUSED(uvprojxPath);
     return outcome;
 }
@@ -19,7 +19,7 @@ UvprojxHook::PatchOutcome KeilPlugin::installProject(const QString &uvprojxPath)
 UvprojxHook::PatchOutcome KeilPlugin::uninstallProject(const QString &uvprojxPath) const
 {
     UvprojxHook::PatchOutcome outcome;
-    outcome.error = QStringLiteral("该插件不提供工程卸载能力");
+    outcome.error = QStringLiteral("该功能组件不支持移除工程配置");
     Q_UNUSED(uvprojxPath);
     return outcome;
 }
@@ -28,7 +28,7 @@ QVariantMap KeilPlugin::runTool(const QVariantMap &args) const
 {
     QVariantMap result;
     result.insert(QStringLiteral("ok"), false);
-    result.insert(QStringLiteral("message"), QStringLiteral("该插件不提供独立工具入口"));
+    result.insert(QStringLiteral("message"), QStringLiteral("该功能组件不提供本地执行入口"));
     Q_UNUSED(args);
     return result;
 }

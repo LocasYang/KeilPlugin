@@ -21,6 +21,20 @@ $WinDeployQt = $toolchain.WinDeployQt
 $env:PATH = "$MingwBin;$(Join-Path $QtRoot 'bin');$env:PATH"
 
 $buildDir = Join-Path $ProjectRoot "build"
+$cachePath = Join-Path $buildDir "CMakeCache.txt"
+if (Test-Path -LiteralPath $cachePath) {
+    $homeEntry = Select-String -LiteralPath $cachePath `
+        -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=(.+)$' | Select-Object -First 1
+    if ($homeEntry) {
+        $cachedSource = [System.IO.Path]::GetFullPath($homeEntry.Matches[0].Groups[1].Value)
+        $currentSource = [System.IO.Path]::GetFullPath($ProjectRoot)
+        if (-not $cachedSource.Equals($currentSource,
+                                      [System.StringComparison]::OrdinalIgnoreCase)) {
+            $buildDir = Join-Path $ProjectRoot "build-local"
+            Write-Host "检测到旧位置的 CMake 缓存，改用：$buildDir"
+        }
+    }
+}
 if (-not (Test-Path $buildDir)) {
     & $CmakeExe -S $ProjectRoot -B $buildDir -G Ninja `
         -DCMAKE_MAKE_PROGRAM="$NinjaExe" `

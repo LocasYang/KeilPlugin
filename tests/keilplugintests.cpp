@@ -30,6 +30,7 @@ const char *kProjectTemplate = R"(<?xml version="1.0" encoding="UTF-8" standalon
 <Project>
   <Target>
     <TargetName>App</TargetName>
+    <uAC6>1</uAC6>
     <TargetOption>
       <TargetCommonOption>
         <Device>STM32F103ZE</Device>
@@ -46,6 +47,19 @@ const char *kProjectTemplate = R"(<?xml version="1.0" encoding="UTF-8" standalon
         </AfterMake>
       </TargetCommonOption>
     </TargetOption>
+    <v6Lto>0</v6Lto>
+    <Groups>
+      <Group>
+        <GroupName>Application</GroupName>
+        <Files>
+          <File>
+            <FileName>main.c</FileName>
+            <FileType>1</FileType>
+            <FilePath>..\src\main.c</FilePath>
+          </File>
+        </Files>
+      </Group>
+    </Groups>
   </Target>
 </Project>
 )";
@@ -55,6 +69,22 @@ QString mapFixture()
     QStringList lines;
     lines << "Section Cross References"
           << ""
+          << "Memory Map of the image"
+          << ""
+          << "  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x00004330, Max: 0x00080000, ABSOLUTE)"
+          << ""
+          << "    Execution Region ER_IROM1 (Exec base: 0x08000000, Load base: 0x08000000, Size: 0x00002f00, Max: 0x00080000, ABSOLUTE)"
+          << ""
+          << "      0x08000000   0x08000000   0x00000100   Code   RO          1    .text              main.o"
+          << ""
+          << "    Execution Region RW_IRAM1 (Exec base: 0x20000000, Load base: 0x08002f00, Size: 0x00001430, Max: 0x00010000, ABSOLUTE)"
+          << ""
+          << "      0x20000000   0x08002f00   0x00000008   Data   RW          2    .data              main.o"
+          << ""
+          << "    Execution Region ETH_RX_DESC (Exec base: 0x30000000, Load base: 0x08002f08, Size: 0x00000060, Max: 0x00000200, ABSOLUTE)"
+          << ""
+          << "      0x30000000   0x08002f08   0x00000060   Data   RW          3    .RxDecripSection    ethernetif.o"
+          << ""
           << "    Image component sizes"
           << ""
           << ""
@@ -62,7 +92,7 @@ QString mapFixture()
           << ""
           << "       100          12         40          8        320       8448   main.o"
           << "         60           0          0          0       1100       1024   bsp_led.o"
-          << "       180          12         48       1120       3136      16896   Total"
+          << "       180          12         48       1120       3136      16896   Object Totals"
           << ""
           << "      6856        1316       4212       1168       4000      17880   Grand Totals"
           << "      6856        1316       4212       1168       4000      17880   ELF Image Totals"
@@ -113,6 +143,13 @@ void testMapParser()
     check(summary.rwData == 1168, "rw column");
     check(summary.ziData == 4000, "zi column");
     check(summary.components.size() == 2, "two aggregated objects");
+    check(summary.objectComponents.size() == 2, "two ordered object rows");
+    if (summary.objectComponents.size() == 2) {
+        check(summary.objectComponents.at(0).name == QLatin1String("main.o"),
+              "object rows preserve linker order");
+        check(summary.objectComponents.at(1).name == QLatin1String("bsp_led.o"),
+              "second object row preserved");
+    }
     for (const MapComponent &component : summary.components) {
         if (component.name == QLatin1String("main.o")) {
             check(component.rom == 148, "main.o rom = code+ro+rw");
@@ -122,6 +159,26 @@ void testMapParser()
             check(component.rom == 60, "bsp_led.o rom");
             check(component.ram == 1100, "bsp_led.o ram");
         }
+    }
+    check(summary.regions.size() == 3, "three execution regions parsed");
+    if (summary.regions.size() == 3) {
+        const MapMemoryRegion &rom = summary.regions.at(0);
+        check(rom.name == QLatin1String("ER_IROM1"), "ROM region name");
+        check(rom.loadRegion == QLatin1String("LR_IROM1"), "load region association");
+        check(rom.type == MemoryRegionType::Rom, "RO attribute identifies ROM");
+        check(rom.base == 0x08000000 && rom.used == 0x2f00 && rom.total == 0x80000,
+              "ROM region base/size/max");
+
+        const MapMemoryRegion &ram = summary.regions.at(1);
+        check(ram.name == QLatin1String("RW_IRAM1"), "RAM region name");
+        check(ram.type == MemoryRegionType::Ram, "RW attribute identifies RAM");
+        check(ram.base == 0x20000000 && ram.used == 0x1430 && ram.total == 0x10000,
+              "RAM region base/size/max");
+
+        const MapMemoryRegion &unknownNameRam = summary.regions.at(2);
+        check(unknownNameRam.name == QLatin1String("ETH_RX_DESC"), "custom region name");
+        check(unknownNameRam.type == MemoryRegionType::Ram,
+              "RW row identifies custom-name RAM region");
     }
 
     bool ok = false;
@@ -248,6 +305,44 @@ void testHookInstallUninstall()
     outcome = UvprojxHook::uninstallInFile(projectPath);
     restored = readText(projectPath);
     check(!UvprojxHook::containsToolMarker(restored), "upgraded hook uninstalls cleanly");
+
+    // 7. A legacy keil-build-viewer plus our existing hook must migrate to a
+    //    single unified report command. The legacy command is retained only
+    //    as encoded restore metadata and is restored on uninstall.
+    const QString legacyViewer = QStringLiteral("F:\\tools\\keil-build-viewer.exe");
+    const QString currentHook = UvprojxHook::hookCommand(projectPath);
+    writeText(projectPath, QString(kProjectTemplate)
+                               .arg(legacyViewer, "1", currentHook, "1"));
+    KeilProjectData duplicateData = parseKeilProject(projectPath);
+    check(duplicateData.targets.size() == 1
+              && duplicateData.targets.first().hookInstalled
+              && duplicateData.targets.first().legacyMemoryReportInstalled,
+          "duplicate report hooks are exposed as needing migration");
+    outcome = UvprojxHook::installInFile(projectPath);
+    installed = readText(projectPath);
+    check(outcome.changed, "legacy duplicate migration changes project");
+    check(installed.count(QStringLiteral("--size-report")) == 1,
+          "legacy duplicate migration leaves one report command");
+    check(!installed.contains(legacyViewer),
+          "legacy viewer is no longer directly executable");
+    check(installed.contains(QStringLiteral("--restore-b64")),
+          "legacy viewer retained as restore metadata");
+    check(installed.contains(QStringLiteral("<RunUserProg2>0</RunUserProg2>")),
+          "duplicate second slot disabled");
+    duplicateData = parseKeilProject(projectPath);
+    check(duplicateData.targets.size() == 1
+              && duplicateData.targets.first().hookInstalled
+              && !duplicateData.targets.first().legacyMemoryReportInstalled,
+          "migration clears legacy-report status");
+
+    outcome = UvprojxHook::uninstallInFile(projectPath);
+    restored = readText(projectPath);
+    check(outcome.changed, "migrated unified hook uninstalls");
+    check(restored.contains(QStringLiteral("<UserProg1Name>") + legacyViewer
+                            + QStringLiteral("</UserProg1Name>")),
+          "uninstall restores legacy viewer command");
+    check(restored.contains(QStringLiteral("<RunUserProg1>1</RunUserProg1>")),
+          "restored legacy viewer remains enabled");
 }
 
 void testKeySequenceExpansion()
@@ -287,9 +382,13 @@ void testProjectParse()
         check(target.device == QLatin1String("STM32F103ZE"), "device");
         check(target.flashCap == 0x80000, "flash capacity from IROM");
         check(target.ramCap == 0x10000, "ram capacity from IRAM");
+        check(target.ltoKnown && !target.ltoEnabled, "AC6 LTO disable parsed");
         check(target.outputName == QLatin1String("demo"), "output name");
         check(target.outputDir == QDir::cleanPath(dir.path() + "/Objects"), "output dir joined");
         check(target.listingDir == QDir::cleanPath(dir.path() + "/Listings"), "listing dir joined");
+        check(target.sourceFiles.size() == 1, "one target source file parsed");
+        check(target.sourceFiles.value(0) == QDir::cleanPath(dir.path() + "/../src/main.c"),
+              "source FilePath resolved against uvprojx directory");
         check(!target.hookInstalled, "hook not installed initially");
 
         const QString mapPath = QDir::cleanPath(dir.path() + "/Listings/demo.map");

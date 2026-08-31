@@ -26,7 +26,7 @@ Item {
             spacing: 10
 
             Text {
-                text: "运行日志"
+                text: "操作记录"
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 22
@@ -44,7 +44,7 @@ Item {
             AppButton {
                 compact: true
                 textPixelSize: 12
-                text: "清空日志"
+                text: "清空记录"
                 enabled: PluginManager.logs.length > 0
                 onClicked: PluginManager.clearLogs()
             }
@@ -114,7 +114,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     visible: PluginManager.logs.length === 0
-                    text: "暂无日志 · 安装/卸载插件或加载工程后会记录到这里"
+                    text: "暂无操作记录 · 载入工程、配置功能或执行工具后将在此记录"
                     color: Theme.textTertiary
                     font.family: Theme.fontFamily
                     font.pixelSize: 12

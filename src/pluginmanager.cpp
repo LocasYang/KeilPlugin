@@ -60,7 +60,7 @@ PluginManager::PluginManager(QObject *parent)
     : QObject(parent)
 {
     rebuildPluginStates();
-    setStatusMessage(QStringLiteral("就绪 · 内置 %1 个插件").arg(m_plugins.size()));
+    setStatusMessage(QStringLiteral("就绪 · 已加载 %1 个功能组件").arg(m_plugins.size()));
 }
 
 PluginManager::~PluginManager()
@@ -73,7 +73,7 @@ bool PluginManager::loadProject(const QVariant &source)
 {
     const QString path = localPathOf(source);
     if (path.isEmpty()) {
-        pushResult(false, QStringLiteral("无效的工程路径"));
+        pushResult(false, QStringLiteral("工程路径无效"));
         return false;
     }
     if (!m_project)
@@ -84,16 +84,16 @@ bool PluginManager::loadProject(const QVariant &source)
 
     if (loaded) {
         appendLog(QStringLiteral("success"),
-                  QStringLiteral("已加载 Keil 工程: %1 (%2 个目标)")
+                  QStringLiteral("Keil 工程已载入：%1（%2 个 Target）")
                       .arg(path)
                       .arg(m_project->targetList().size()));
-        setStatusMessage(QStringLiteral("工程: %1 · 目标 %2 个")
+        setStatusMessage(QStringLiteral("工程：%1 · Target %2")
                              .arg(QFileInfo(path).fileName())
                              .arg(m_project->targetList().size()));
     } else {
         appendLog(QStringLiteral("error"),
-                  QStringLiteral("加载工程失败: %1 (%2)").arg(path, m_project->errorString()));
-        setStatusMessage(QStringLiteral("工程加载失败"));
+                  QStringLiteral("工程载入失败：%1（%2）").arg(path, m_project->errorString()));
+        setStatusMessage(QStringLiteral("工程载入失败"));
         pushResult(false, m_project->errorString());
     }
     return loaded;
@@ -112,17 +112,17 @@ bool PluginManager::installPlugin(const QString &pluginId)
 {
     KeilPlugin *plugin = PluginRegistry::instance().find(pluginId);
     if (!plugin) {
-        pushResult(false, QStringLiteral("未找到插件: %1").arg(pluginId));
+        pushResult(false, QStringLiteral("未找到功能组件：%1").arg(pluginId));
         return false;
     }
     if (!projectLoaded()) {
-        pushResult(false, QStringLiteral("请先打开一个 Keil 工程"));
+        pushResult(false, QStringLiteral("请先载入 Keil 工程"));
         return false;
     }
 
     const PluginDescriptor descriptor = plugin->descriptor();
     appendLog(QStringLiteral("info"),
-              QStringLiteral("开始安装插件「%1」到工程").arg(descriptor.name));
+              QStringLiteral("开始将「%1」配置到工程").arg(descriptor.name));
 
     bool allOk = true;
     bool anyChanged = false;
@@ -135,7 +135,7 @@ bool PluginManager::installPlugin(const QString &pluginId)
             allOk = false;
         } else if (outcome.changed) {
             appendLog(QStringLiteral("success"),
-                      QStringLiteral("构建钩子已写入 -> %1").arg(uvprojx));
+                      QStringLiteral("构建后处理配置已写入：%1").arg(uvprojx));
             anyChanged = true;
         }
     }
@@ -145,13 +145,13 @@ bool PluginManager::installPlugin(const QString &pluginId)
     emit projectChanged();
 
     if (!allOk) {
-        appendLog(QStringLiteral("error"), QStringLiteral("插件安装: 部分工程写入失败"));
-        pushResult(false, QStringLiteral("部分工程写入失败，详情见运行日志"));
+        appendLog(QStringLiteral("error"), QStringLiteral("工程集成配置未全部完成"));
+        pushResult(false, QStringLiteral("部分工程配置失败，详情请查看操作记录"));
         return false;
     }
     const QString message = anyChanged
-            ? QStringLiteral("「%1」已安装到工程").arg(descriptor.name)
-            : QStringLiteral("「%1」已处于安装状态，无需重复安装").arg(descriptor.name);
+            ? QStringLiteral("「%1」已配置到工程").arg(descriptor.name)
+            : QStringLiteral("当前工程已完成「%1」配置，无需重复操作").arg(descriptor.name);
     appendLog(QStringLiteral("success"), message);
     pushResult(true, message);
     return true;
@@ -161,17 +161,17 @@ bool PluginManager::uninstallPlugin(const QString &pluginId)
 {
     KeilPlugin *plugin = PluginRegistry::instance().find(pluginId);
     if (!plugin) {
-        pushResult(false, QStringLiteral("未找到插件: %1").arg(pluginId));
+        pushResult(false, QStringLiteral("未找到功能组件：%1").arg(pluginId));
         return false;
     }
     if (!projectLoaded()) {
-        pushResult(false, QStringLiteral("请先打开一个 Keil 工程"));
+        pushResult(false, QStringLiteral("请先载入 Keil 工程"));
         return false;
     }
 
     const PluginDescriptor descriptor = plugin->descriptor();
     appendLog(QStringLiteral("info"),
-              QStringLiteral("开始从工程卸载插件「%1」").arg(descriptor.name));
+              QStringLiteral("开始从工程移除「%1」集成").arg(descriptor.name));
 
     bool allOk = true;
     bool anyChanged = false;
@@ -184,7 +184,7 @@ bool PluginManager::uninstallPlugin(const QString &pluginId)
             allOk = false;
         } else if (outcome.changed) {
             appendLog(QStringLiteral("success"),
-                      QStringLiteral("构建钩子已移除 -> %1").arg(uvprojx));
+                      QStringLiteral("构建后处理配置已移除：%1").arg(uvprojx));
             anyChanged = true;
         }
     }
@@ -194,13 +194,13 @@ bool PluginManager::uninstallPlugin(const QString &pluginId)
     emit projectChanged();
 
     if (!allOk) {
-        appendLog(QStringLiteral("error"), QStringLiteral("插件卸载: 部分工程写入失败"));
-        pushResult(false, QStringLiteral("部分工程写入失败，详情见运行日志"));
+        appendLog(QStringLiteral("error"), QStringLiteral("工程集成未全部移除"));
+        pushResult(false, QStringLiteral("部分工程配置移除失败，详情请查看操作记录"));
         return false;
     }
     const QString message = anyChanged
-            ? QStringLiteral("「%1」已从工程卸载").arg(descriptor.name)
-            : QStringLiteral("工程中未发现「%1」的钩子").arg(descriptor.name);
+            ? QStringLiteral("「%1」已从工程移除").arg(descriptor.name)
+            : QStringLiteral("工程中未检测到「%1」的构建后处理配置").arg(descriptor.name);
     appendLog(anyChanged ? QStringLiteral("success") : QStringLiteral("warning"), message);
     pushResult(true, message);
     return true;
@@ -252,7 +252,7 @@ QVariantMap PluginManager::runTool(const QString &pluginId, const QVariantMap &a
 {
     KeilPlugin *plugin = PluginRegistry::instance().find(pluginId);
     if (!plugin) {
-        pushResult(false, QStringLiteral("未找到插件: %1").arg(pluginId));
+        pushResult(false, QStringLiteral("未找到功能组件：%1").arg(pluginId));
         return m_lastResult;
     }
     QVariantMap normalized;
@@ -261,7 +261,7 @@ QVariantMap PluginManager::runTool(const QString &pluginId, const QVariantMap &a
     const QVariantMap result = plugin->runTool(normalized);
     appendLog(result.value(QStringLiteral("ok")).toBool() ? QStringLiteral("success")
                                                           : QStringLiteral("error"),
-              QStringLiteral("工具执行: %1").arg(result.value(QStringLiteral("message")).toString()));
+              QStringLiteral("工具执行结果：%1").arg(result.value(QStringLiteral("message")).toString()));
     pushResult(result.value(QStringLiteral("ok")).toBool(),
                result.value(QStringLiteral("message")).toString());
     return result;
@@ -308,16 +308,26 @@ void PluginManager::rebuildPluginStates()
 
         const bool hookPlugin = descriptor.capabilities.contains(QStringLiteral("install"));
         int installedCount = 0;
+        int needsMigrationCount = 0;
         QVariantList perTarget;
+        QVariantList perTargetNeedsMigration;
         for (const KeilTarget &target : targets) {
             const bool installed = plugin->targetInstalled(target);
+            const bool needsMigration = descriptor.id == QLatin1String("keil-size-report")
+                                        && target.legacyMemoryReportInstalled;
             perTarget.append(installed);
+            perTargetNeedsMigration.append(needsMigration);
             if (installed)
                 ++installedCount;
+            if (needsMigration)
+                ++needsMigrationCount;
         }
         entry.insert(QStringLiteral("installedCount"), hookPlugin ? installedCount : -1);
+        entry.insert(QStringLiteral("needsMigrationCount"),
+                     hookPlugin ? needsMigrationCount : 0);
         entry.insert(QStringLiteral("targetCount"), targets.size());
         entry.insert(QStringLiteral("perTarget"), perTarget);
+        entry.insert(QStringLiteral("perTargetNeedsMigration"), perTargetNeedsMigration);
         m_plugins.append(entry);
     }
     emit pluginsChanged();

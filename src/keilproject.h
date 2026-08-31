@@ -16,6 +16,9 @@ struct KeilTarget {
     QString outputDir;
     QString listingDir;
     QString outputName;
+    QStringList sourceFiles; // absolute paths from this Target's <FilePath> entries
+    bool ltoKnown = false;
+    bool ltoEnabled = false;
     // Map path from a Linker "Misc controls" --list= override, resolved
     // against the uvprojx directory. Empty when no override is configured.
     QString linkerMapFile;
@@ -23,6 +26,7 @@ struct KeilTarget {
     // false Keil never writes a .map, so not finding one is expected.
     bool linkerMapEnabled = true;
     bool hookInstalled = false;
+    bool legacyMemoryReportInstalled = false;
     QString mapPath;
     bool mapFound = false;
 };

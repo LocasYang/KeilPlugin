@@ -7,7 +7,7 @@ Button {
 
     property bool current: false
     property string symbol: "•"
-    // Sub-level entry (plugin report views under 插件中心).
+    // Sub-level entry (analysis views under 工程功能).
     property bool subLevel: false
 
     implicitHeight: subLevel ? 34 : 42
