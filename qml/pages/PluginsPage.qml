@@ -22,13 +22,24 @@ Item {
                                        && currentPlugin.capabilities.indexOf("install") >= 0
     readonly property bool runPlugin: currentPlugin
                                       && currentPlugin.capabilities.indexOf("run") >= 0
+    // The main window keeps the navigation visible. At its minimum supported
+    // size the content page is therefore much narrower than the window itself.
+    // Switch the dense controls before they begin to force the detail card out
+    // of the viewport.
+    readonly property bool narrowLayout: width < 1100
+    readonly property int pluginListWidth: narrowLayout ? 230 : 316
+    readonly property int targetColumnWidth: narrowLayout ? 86 : 150
 
     component InfoField: ColumnLayout {
         property string label: ""
         property string value: ""
+        Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: 2
 
         Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: parent.label
             color: Theme.textTertiary
             font.family: Theme.fontFamily
@@ -37,6 +48,7 @@ Item {
 
         Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: parent.value
             color: Theme.textPrimary
             font.family: Theme.fontFamily
@@ -168,10 +180,11 @@ Item {
         // -------- Left: plugin list.
         ColumnLayout {
             id: leftColumn
-            Layout.preferredWidth: 316
+            Layout.preferredWidth: root.pluginListWidth
             // ScrollView 子项会在 polish 阶段抬升父布局的隐式宽度提示，
             // 显式钳制最大宽度保证左列固定宽、右侧详情占满剩余空间。
-            Layout.maximumWidth: 316
+            Layout.minimumWidth: root.pluginListWidth
+            Layout.maximumWidth: root.pluginListWidth
             Layout.fillHeight: true
             spacing: 10
 
@@ -198,13 +211,14 @@ Item {
             }
 
             ScrollView {
+                id: pluginListScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                 Column {
-                    width: 292
+                    width: pluginListScroll.availableWidth
                     spacing: 8
 
                     Repeater {
@@ -214,7 +228,7 @@ Item {
                             id: pluginCard
                             required property var modelData
                             required property int index
-                            width: 292
+                            width: parent.width
                             height: 88
                             padding: 12
                             tint: root.selectedIndex === index
@@ -285,7 +299,8 @@ Item {
                                         }
 
                                         StatusPill {
-                                            visible: pluginCard.modelData.installedCount >= 0
+                                            visible: !root.narrowLayout
+                                                     && pluginCard.modelData.installedCount >= 0
                                             text: pluginCard.modelData.needsMigrationCount > 0
                                                   ? I18n.t("Update needed", "待更新")
                                                   : pluginCard.modelData.targetCount > 0
@@ -321,7 +336,7 @@ Item {
         AppCard {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            padding: 22
+            padding: root.narrowLayout ? 16 : 22
 
             ColumnLayout {
                 anchors.fill: parent
@@ -363,19 +378,21 @@ Item {
                             Layout.fillWidth: true
                             spacing: 2
 
-                            RowLayout {
+                            Text {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                Layout.minimumWidth: 0
+                                text: root.currentPlugin ? I18n.pluginName(root.currentPlugin.id, root.currentPlugin.name) : ""
+                                color: Theme.textPrimary
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 19
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: root.currentPlugin ? I18n.pluginName(root.currentPlugin.id, root.currentPlugin.name) : ""
-                                    color: Theme.textPrimary
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 19
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
-                                }
+                            Flow {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: implicitHeight
+                                spacing: 6
 
                                 Repeater {
                                     model: root.currentPlugin ? root.currentPlugin.capabilities : []
@@ -425,7 +442,7 @@ Item {
 
                             GridLayout {
                                 Layout.fillWidth: true
-                                columns: 4
+                                columns: root.narrowLayout ? 2 : 4
                                 columnSpacing: 18
                                 rowSpacing: 8
 
@@ -536,10 +553,10 @@ Item {
                                         anchors.rightMargin: 12
                                         spacing: 12
 
-                                        Text { Layout.preferredWidth: 150; text: I18n.t("Project file", "工程文件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                        Text { Layout.preferredWidth: 150; text: I18n.t("Build target", "构建目标"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                        Text { Layout.preferredWidth: 150; text: I18n.t("Device", "目标器件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                        Item { Layout.fillWidth: true }
+                                        Text { Layout.preferredWidth: root.targetColumnWidth; Layout.minimumWidth: 0; text: I18n.t("Project file", "工程文件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                        Text { Layout.preferredWidth: root.targetColumnWidth; Layout.minimumWidth: 0; text: I18n.t("Build target", "构建目标"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                        Text { Layout.preferredWidth: root.targetColumnWidth; Layout.minimumWidth: 0; text: I18n.t("Device", "目标器件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                        Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
                                         Text { Layout.preferredWidth: 74; text: I18n.t("Status", "配置状态"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; horizontalAlignment: Text.AlignHCenter }
                                     }
                                 }
@@ -564,7 +581,8 @@ Item {
                                             spacing: 12
 
                                             Text {
-                                                Layout.preferredWidth: 150
+                                                Layout.preferredWidth: root.targetColumnWidth
+                                                Layout.minimumWidth: 0
                                                 text: targetRow.modelData.project
                                                 color: Theme.textPrimary
                                                 font.family: Theme.fontFamily
@@ -573,7 +591,8 @@ Item {
                                             }
 
                                             Text {
-                                                Layout.preferredWidth: 150
+                                                Layout.preferredWidth: root.targetColumnWidth
+                                                Layout.minimumWidth: 0
                                                 text: targetRow.modelData.name
                                                 color: Theme.textPrimary
                                                 font.family: Theme.fontFamily
@@ -583,7 +602,8 @@ Item {
                                             }
 
                                             Text {
-                                                Layout.preferredWidth: 150
+                                                Layout.preferredWidth: root.targetColumnWidth
+                                                Layout.minimumWidth: 0
                                                 text: targetRow.modelData.device
                                                 color: Theme.textSecondary
                                                 font.family: "Consolas"
@@ -591,7 +611,7 @@ Item {
                                                 elide: Text.ElideRight
                                             }
 
-                                            Item { Layout.fillWidth: true }
+                                            Item { Layout.fillWidth: true; Layout.minimumWidth: 0 }
 
                                             StatusPill {
                                                 Layout.preferredWidth: 74
@@ -752,8 +772,9 @@ Item {
                         color: Theme.divider
                     }
 
-                    RowLayout {
+                    Flow {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: implicitHeight
                         spacing: 10
 
                         AppButton {

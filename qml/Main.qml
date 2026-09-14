@@ -11,8 +11,11 @@ ApplicationWindow {
 
     width: 1280
     height: 800
-    minimumWidth: 1040
-    minimumHeight: 660
+    // 1100 × 700 is the smallest desktop canvas supported by the responsive
+    // pages. Below this size the navigation and build actions no longer have
+    // enough room to remain readable.
+    minimumWidth: 1100
+    minimumHeight: 700
     visible: true
     title: "KeilPlugin Studio"
     color: Theme.background
