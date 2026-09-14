@@ -9,12 +9,12 @@ import KeilPluginStudio 1.0
 Dialog {
     id: control
 
-    property string titleText: "确认操作"
+    property string titleText: I18n.t("Confirm Operation", "确认操作")
     property string messageText: ""
     property string noteText: ""
     property color accent: Theme.primary
-    property string riskText: "常规操作"
-    property string confirmText: "确认"
+    property string riskText: I18n.t("Normal", "常规操作")
+    property string confirmText: I18n.t("Confirm", "确认")
     property var infoRows: []
     signal operationConfirmed()
 
@@ -39,12 +39,12 @@ Dialog {
     }
 
     function openFor(properties) {
-        titleText = properties.titleText || "确认操作"
+        titleText = properties.titleText || I18n.t("Confirm Operation", "确认操作")
         messageText = properties.messageText || ""
         noteText = properties.noteText || ""
         accent = properties.accent || Theme.primary
-        riskText = properties.riskText || "常规操作"
-        confirmText = properties.confirmText || "确认"
+        riskText = properties.riskText || I18n.t("Normal", "常规操作")
+        confirmText = properties.confirmText || I18n.t("Confirm", "确认")
         infoRows = properties.infoRows || []
         open()
     }
@@ -96,7 +96,7 @@ Dialog {
                     height: 30
                     ToolTip.visible: hovered
                     ToolTip.delay: 400
-                    ToolTip.text: "关闭"
+                    ToolTip.text: I18n.t("Close", "关闭")
 
                     contentItem: Text {
                         text: "×"
@@ -244,7 +244,7 @@ Dialog {
                 Item { Layout.fillWidth: true }
 
                 AppButton {
-                    text: "取消"
+                    text: I18n.t("Cancel", "取消")
                     variant: "outlined"
                     accent: Theme.textSecondary
                     onClicked: control.reject()

@@ -9,7 +9,7 @@ Item {
 
     property string symbol: "×"
     property color accent: Theme.textTertiary
-    property string title: "暂无数据"
+    property string title: I18n.t("No data available", "暂无数据")
     property string hint: ""
 
     ColumnLayout {

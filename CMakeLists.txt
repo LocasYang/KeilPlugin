@@ -38,6 +38,7 @@ qt_add_executable(KeilPluginStudio
 )
 
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(qml/I18n.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(KeilPluginStudio
     URI KeilPluginStudio
@@ -46,6 +47,7 @@ qt_add_qml_module(KeilPluginStudio
         qml/assets/keilplugin-mark.svg
     QML_FILES
         qml/Main.qml
+        qml/I18n.qml
         qml/Theme.qml
         qml/components/AppButton.qml
         qml/components/AppCard.qml
@@ -102,6 +104,9 @@ add_custom_command(TARGET KeilPluginStudio POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
             "${KEIL_PLUGIN_STUDIO_DIST_DIR}/README.md"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/README_zh-CN.md"
+            "${KEIL_PLUGIN_STUDIO_DIST_DIR}/README_zh-CN.md"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/shots"
             "${KEIL_PLUGIN_STUDIO_DIST_DIR}/shots"

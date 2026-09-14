@@ -86,8 +86,9 @@ ApplicationWindow {
 
     FileDialog {
         id: projectFileDialog
-        title: "选择 Keil 工程文件"
-        nameFilters: ["Keil 工程文件 (*.uvprojx *.uvmpw)", "所有文件 (*)"]
+        title: I18n.t("Select Keil Project", "选择 Keil 工程文件")
+        nameFilters: [I18n.t("Keil project files (*.uvprojx *.uvmpw)", "Keil 工程文件 (*.uvprojx *.uvmpw)"),
+                      I18n.t("All files (*)", "所有文件 (*)")]
         onAccepted: PluginManager.loadProject(selectedFile)
     }
 
@@ -205,7 +206,7 @@ ApplicationWindow {
                             }
 
                             Text {
-                                text: "Keil 工程构建与交付工具"
+                                text: I18n.t("Keil project build and delivery tool", "Keil 工程构建与交付工具")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -227,7 +228,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: root.projectLoaded
                                       ? PluginManager.project.sourcePath
-                                      : "尚未载入 Keil 工程"
+                                      : I18n.t("No Keil project loaded", "尚未载入 Keil 工程")
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -239,11 +240,16 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 visible: root.projectLoaded
                                 text: root.projectTargets.length > 0
-                                      ? root.projectTargets.length + " 个目标 · " +
-                                        (PluginManager.project.kind === "uvmpw" ? "多工程工作区"
-                                         : PluginManager.project.kind === "dir" ? "工程目录"
-                                         : "单工程")
-                                      : "点击右侧「载入工程」选择 .uvprojx / .uvmpw 工程文件"
+                                      ? I18n.t(root.projectTargets.length + " target(s) · " +
+                                                 (PluginManager.project.kind === "uvmpw" ? "multi-project workspace"
+                                                  : PluginManager.project.kind === "dir" ? "project directory"
+                                                  : "single project"),
+                                                 root.projectTargets.length + " 个目标 · " +
+                                                 (PluginManager.project.kind === "uvmpw" ? "多工程工作区"
+                                                  : PluginManager.project.kind === "dir" ? "工程目录"
+                                                  : "单工程"))
+                                      : I18n.t("Choose a .uvprojx or .uvmpw file with Load Project.",
+                                                 "点击右侧「载入工程」选择 .uvprojx / .uvmpw 工程文件")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -252,7 +258,9 @@ ApplicationWindow {
                         }
 
                         StatusPill {
-                            text: root.projectLoaded ? "工程已载入" : "未载入工程"
+                            text: root.projectLoaded
+                                  ? I18n.t("Project loaded", "工程已载入")
+                                  : I18n.t("No project", "未载入工程")
                             accent: root.projectLoaded ? Theme.success : Theme.textTertiary
                         }
 
@@ -260,7 +268,7 @@ ApplicationWindow {
                             compact: true
                             textPixelSize: 12
                             leadingSymbol: "📂"
-                            text: "载入工程"
+                            text: I18n.t("Load Project", "载入工程")
                             variant: "primary"
                             onClicked: root.openProjectDialog()
                         }
@@ -268,7 +276,7 @@ ApplicationWindow {
                         AppButton {
                             compact: true
                             textPixelSize: 12
-                            text: Theme.dark ? "浅色" : "深色"
+                            text: Theme.dark ? I18n.t("Light", "浅色") : I18n.t("Dark", "深色")
                             variant: "text"
                             onClicked: Theme.dark = !Theme.dark
                         }
@@ -276,7 +284,7 @@ ApplicationWindow {
                         AppButton {
                             compact: true
                             textPixelSize: 12
-                            text: "主题色"
+                            text: I18n.t("Accent", "主题色")
                             variant: "text"
                             onClicked: themePopup.open()
                         }
@@ -317,7 +325,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
 
                                         StatusPill {
-                                            text: "交付组件"
+                                            text: I18n.t("Components", "交付组件")
                                             accent: Theme.primary
                                             dot: false
                                             scaleFactor: 0.9
@@ -326,7 +334,7 @@ ApplicationWindow {
                                         Item { Layout.fillWidth: true }
 
                                         Text {
-                                            text: PluginManager.plugins.length + " 个"
+                                            text: I18n.t(PluginManager.plugins.length + " item(s)", PluginManager.plugins.length + " 个")
                                             color: Theme.textTertiary
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 11
@@ -335,7 +343,7 @@ ApplicationWindow {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "工程功能"
+                                        text: I18n.t("Project Tools", "工程功能")
                                         color: Theme.textPrimary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 15
@@ -344,7 +352,7 @@ ApplicationWindow {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "配置 / 分析 / 镜像生成"
+                                        text: I18n.t("Configure / Analyze / Build image", "配置 / 分析 / 镜像生成")
                                         color: Theme.textSecondary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
@@ -362,7 +370,7 @@ ApplicationWindow {
                             Text {
                                 Layout.leftMargin: 8
                                 Layout.topMargin: 2
-                                text: "功能导航"
+                                text: I18n.t("NAVIGATION", "功能导航")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 11
@@ -375,7 +383,7 @@ ApplicationWindow {
 
                                 NavItem {
                                     width: 212
-                                    text: "工程功能"
+                                    text: I18n.t("Project Tools", "工程功能")
                                     symbol: "⧉"
                                     current: root.currentPage === 0
                                     onClicked: root.currentPage = 0
@@ -385,7 +393,7 @@ ApplicationWindow {
                                     width: 212
                                     height: visible ? 26 : 0
                                     visible: root.pluginViewItems.length > 0
-                                    text: "  分析报告"
+                                    text: "  " + I18n.t("Analysis", "分析报告")
                                     verticalAlignment: Text.AlignVCenter
                                     color: Theme.textTertiary
                                     font.family: Theme.fontFamily
@@ -401,7 +409,7 @@ ApplicationWindow {
                                         width: 212
                                         subLevel: true
                                         symbol: "◫"
-                                        text: modelData.label
+                                        text: I18n.pluginViewLabel(modelData.id, modelData.label)
                                         current: root.currentPage === modelData.page
                                         onClicked: root.currentPage = modelData.page
                                     }
@@ -415,8 +423,8 @@ ApplicationWindow {
 
                                 Repeater {
                                     model: [
-                                        { label: "操作记录", symbol: "▤", page: 2 },
-                                        { label: "系统设置", symbol: "⚙", page: 3 }
+                                        { label: I18n.t("Activity Log", "操作记录"), symbol: "▤", page: 2 },
+                                        { label: I18n.t("Settings", "系统设置"), symbol: "⚙", page: 3 }
                                     ]
 
                                     delegate: NavItem {
@@ -434,7 +442,7 @@ ApplicationWindow {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "v1.3.0 · Qt 6.6 · 本地运行"
+                                text: I18n.t("v1.3.0 · Qt 6.6 · Local", "v1.3.0 · Qt 6.6 · 本地运行")
                                 horizontalAlignment: Text.AlignHCenter
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
@@ -495,7 +503,11 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: PluginManager.statusMessage
+                            text: root.projectLoaded
+                                  ? I18n.t("Project loaded · " + root.projectTargets.length + " target(s)",
+                                           PluginManager.statusMessage)
+                                  : I18n.t("Ready · " + PluginManager.plugins.length + " component(s) loaded",
+                                           PluginManager.statusMessage)
                             color: Theme.textSecondary
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -505,8 +517,10 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
 
                         Text {
-                            text: "Target " + root.projectTargets.length + " · 功能组件 "
-                                  + PluginManager.plugins.length
+                            text: I18n.t("Targets " + root.projectTargets.length + " · Components "
+                                         + PluginManager.plugins.length,
+                                         "Target " + root.projectTargets.length + " · 功能组件 "
+                                         + PluginManager.plugins.length)
                             color: Theme.textTertiary
                             font.family: Theme.fontFamily
                             font.pixelSize: 11
@@ -538,7 +552,7 @@ ApplicationWindow {
             spacing: 12
 
             Text {
-                text: "界面主题"
+                text: I18n.t("Appearance", "界面主题")
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 15
@@ -552,7 +566,7 @@ ApplicationWindow {
                 AppButton {
                     Layout.fillWidth: true
                     compact: true
-                    text: "浅色"
+                    text: I18n.t("Light", "浅色")
                     variant: !Theme.dark ? "primary" : "default"
                     onClicked: Theme.dark = false
                 }
@@ -560,14 +574,14 @@ ApplicationWindow {
                 AppButton {
                     Layout.fillWidth: true
                     compact: true
-                    text: "深色"
+                    text: I18n.t("Dark", "深色")
                     variant: Theme.dark ? "primary" : "default"
                     onClicked: Theme.dark = true
                 }
             }
 
             Text {
-                text: "界面主色"
+                text: I18n.t("Accent color", "界面主色")
                 color: Theme.textSecondary
                 font.family: Theme.fontFamily
                 font.pixelSize: 12

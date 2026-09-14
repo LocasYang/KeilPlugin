@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QFileInfo>
+#include <QSettings>
 #include <QUrl>
 
 #include <algorithm>
@@ -59,6 +60,11 @@ QString localPathOf(const QVariant &source)
 PluginManager::PluginManager(QObject *parent)
     : QObject(parent)
 {
+    QSettings settings;
+    const QString savedLanguage = settings.value(QStringLiteral("Ui/language"),
+                                                  QStringLiteral("en")).toString();
+    m_uiLanguage = savedLanguage == QLatin1String("zh-CN")
+            ? QStringLiteral("zh-CN") : QStringLiteral("en");
     rebuildPluginStates();
     setStatusMessage(QStringLiteral("就绪 · 已加载 %1 个功能组件").arg(m_plugins.size()));
 }
@@ -271,6 +277,18 @@ void PluginManager::clearLogs()
 {
     m_logs.clear();
     emit logsChanged();
+}
+
+void PluginManager::setUiLanguage(const QString &language)
+{
+    const QString normalized = language == QLatin1String("zh-CN")
+            ? QStringLiteral("zh-CN") : QStringLiteral("en");
+    if (m_uiLanguage == normalized)
+        return;
+    m_uiLanguage = normalized;
+    QSettings settings;
+    settings.setValue(QStringLiteral("Ui/language"), m_uiLanguage);
+    emit uiLanguageChanged();
 }
 
 void PluginManager::appendLog(const QString &level, const QString &message)

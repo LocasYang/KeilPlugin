@@ -81,13 +81,13 @@ Item {
 
     function capabilityLabel(capability) {
         if (capability === "install")
-            return "工程集成"
+            return I18n.t("Project integration", "工程集成")
         if (capability === "uninstall")
-            return "支持移除"
+            return I18n.t("Reversible", "支持移除")
         if (capability === "report")
-            return "报告输出"
+            return I18n.t("Report output", "报告输出")
         if (capability === "run")
-            return "本地执行"
+            return I18n.t("Local tool", "本地执行")
         return capability
     }
 
@@ -112,22 +112,28 @@ Item {
         const updating = currentPlugin.needsMigrationCount > 0
         pendingOperation = "install"
         showConfirmDialog().openFor({
-            titleText: updating ? "更新工程集成" : "配置工程集成",
+            titleText: updating ? I18n.t("Update Project Integration", "更新工程集成")
+                                : I18n.t("Configure Project Integration", "配置工程集成"),
             messageText: updating
-                         ? "将旧内存报告合并为「" + currentPlugin.name + "」统一输出"
-                         : "将「" + currentPlugin.name + "」接入所选 Keil 工程的构建后处理流程",
+                         ? I18n.t("Consolidate legacy memory reports into one " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " report.",
+                                  "将旧内存报告合并为「" + currentPlugin.name + "」统一输出")
+                         : I18n.t("Add " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " to the selected Keil project's After Build workflow.",
+                                  "将「" + currentPlugin.name + "」接入所选 Keil 工程的构建后处理流程"),
             noteText: (updating
-                      ? "将停用 keil-build-viewer 的重复输出，并保留移除集成时可恢复的原命令。"
-                      : "本操作会修改 uvprojx 文件中的 After Build 用户命令。")
-                      + "执行前请关闭 Keil，避免其退出时以旧配置覆盖本次变更。",
+                      ? I18n.t("Duplicate keil-build-viewer output will be disabled, and the original command will be kept for restoration.",
+                               "将停用 keil-build-viewer 的重复输出，并保留移除集成时可恢复的原命令。")
+                      : I18n.t("This operation changes the After Build user command in the uvprojx file.",
+                               "本操作会修改 uvprojx 文件中的 After Build 用户命令。"))
+                      + I18n.t(" Close Keil first so cached settings cannot overwrite this change.",
+                                 "执行前请关闭 Keil，避免其退出时以旧配置覆盖本次变更。"),
             accent: Theme.primary,
-            riskText: "中风险",
-            confirmText: updating ? "确认更新" : "写入工程配置",
+            riskText: I18n.t("Moderate", "中风险"),
+            confirmText: updating ? I18n.t("Update", "确认更新") : I18n.t("Apply", "写入工程配置"),
             infoRows: [
-                { label: "工程范围", value: project.sourcePath },
-                { label: "功能组件", value: currentPlugin.name + " v" + currentPlugin.version },
-                { label: "配置位置", value: "After Build 用户命令" },
-                { label: "执行时机", value: "每次 Build/Rebuild 完成后" }
+                { label: I18n.t("Project scope", "工程范围"), value: project.sourcePath },
+                { label: I18n.t("Component", "功能组件"), value: I18n.pluginName(currentPlugin.id, currentPlugin.name) + " v" + currentPlugin.version },
+                { label: I18n.t("Configuration", "配置位置"), value: I18n.t("After Build user command", "After Build 用户命令") },
+                { label: I18n.t("Execution", "执行时机"), value: I18n.t("After every Build/Rebuild", "每次 Build/Rebuild 完成后") }
             ]
         })
     }
@@ -138,17 +144,18 @@ Item {
         const project = PluginManager.project
         pendingOperation = "uninstall"
         showConfirmDialog().openFor({
-            titleText: "移除工程集成",
-            messageText: "将从所选 Keil 工程移除「" + currentPlugin.name + "」的构建后处理配置",
-            noteText: "移除后会还原原有 After Build 用户命令，并清理旧版 Python 脚本钩子。"
-                      + "执行前请关闭 Keil，避免其退出时覆盖本次变更。",
+            titleText: I18n.t("Remove Project Integration", "移除工程集成"),
+            messageText: I18n.t("Remove " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " from the selected Keil project's After Build workflow.",
+                                "将从所选 Keil 工程移除「" + currentPlugin.name + "」的构建后处理配置"),
+            noteText: I18n.t("The original After Build command will be restored and legacy Python hooks will be cleaned up. Close Keil first so it cannot overwrite this change.",
+                              "移除后会还原原有 After Build 用户命令，并清理旧版 Python 脚本钩子。执行前请关闭 Keil，避免其退出时覆盖本次变更。"),
             accent: Theme.warning,
-            riskText: "中风险",
-            confirmText: "确认移除",
+            riskText: I18n.t("Moderate", "中风险"),
+            confirmText: I18n.t("Remove", "确认移除"),
             infoRows: [
-                { label: "工程范围", value: project.sourcePath },
-                { label: "功能组件", value: currentPlugin.name + " v" + currentPlugin.version },
-                { label: "变更结果", value: "Build/Rebuild 后不再自动输出报告" }
+                { label: I18n.t("Project scope", "工程范围"), value: project.sourcePath },
+                { label: I18n.t("Component", "功能组件"), value: I18n.pluginName(currentPlugin.id, currentPlugin.name) + " v" + currentPlugin.version },
+                { label: I18n.t("Result", "变更结果"), value: I18n.t("Reports will no longer be printed after Build/Rebuild.", "Build/Rebuild 后不再自动输出报告") }
             ]
         })
     }
@@ -173,7 +180,7 @@ Item {
                 spacing: 8
 
                 Text {
-                    text: "工程功能"
+                    text: I18n.t("Project Tools", "工程功能")
                     color: Theme.textPrimary
                     font.family: Theme.fontFamily
                     font.pixelSize: 16
@@ -183,7 +190,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 StatusPill {
-                    text: pluginList.length + " 个"
+                    text: I18n.t(pluginList.length + " item(s)", pluginList.length + " 个")
                     accent: Theme.primary
                     dot: false
                     scaleFactor: 0.9
@@ -246,7 +253,7 @@ Item {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: pluginCard.modelData.name
+                                        text: I18n.pluginName(pluginCard.modelData.id, pluginCard.modelData.name)
                                         color: Theme.textPrimary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 14
@@ -270,8 +277,8 @@ Item {
 
                                         StatusPill {
                                             text: pluginCard.modelData.category === "hook"
-                                                  ? "构建集成"
-                                                  : "镜像工具"
+                                                  ? I18n.t("Build integration", "构建集成")
+                                                  : I18n.t("Image tool", "镜像工具")
                                             accent: root.pluginAccent(pluginCard.modelData)
                                             dot: false
                                             scaleFactor: 0.82
@@ -280,12 +287,12 @@ Item {
                                         StatusPill {
                                             visible: pluginCard.modelData.installedCount >= 0
                                             text: pluginCard.modelData.needsMigrationCount > 0
-                                                  ? "待更新"
+                                                  ? I18n.t("Update needed", "待更新")
                                                   : pluginCard.modelData.targetCount > 0
                                                   && pluginCard.modelData.installedCount
                                                      === pluginCard.modelData.targetCount
-                                                  ? "已配置"
-                                                  : "未配置"
+                                                  ? I18n.t("Configured", "已配置")
+                                                  : I18n.t("Not configured", "未配置")
                                             accent: pluginCard.modelData.needsMigrationCount > 0
                                                     ? Theme.warning
                                                     : pluginCard.modelData.targetCount > 0
@@ -362,7 +369,7 @@ Item {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: root.currentPlugin ? root.currentPlugin.name : ""
+                                    text: root.currentPlugin ? I18n.pluginName(root.currentPlugin.id, root.currentPlugin.name) : ""
                                     color: Theme.textPrimary
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 19
@@ -385,7 +392,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: root.currentPlugin ? root.currentPlugin.summary : ""
+                                text: root.currentPlugin ? I18n.pluginSummary(root.currentPlugin.id, root.currentPlugin.summary) : ""
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -408,7 +415,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: root.currentPlugin ? root.currentPlugin.description : ""
+                                text: root.currentPlugin ? I18n.pluginDescription(root.currentPlugin.id, root.currentPlugin.description) : ""
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -422,13 +429,15 @@ Item {
                                 columnSpacing: 18
                                 rowSpacing: 8
 
-                                InfoField { label: "功能标识"; value: root.currentPlugin ? root.currentPlugin.id : "" }
-                                InfoField { label: "组件版本"; value: root.currentPlugin ? "v" + root.currentPlugin.version : "" }
-                                InfoField { label: "维护者"; value: root.currentPlugin ? root.currentPlugin.author : "" }
+                                InfoField { label: I18n.t("Component ID", "功能标识"); value: root.currentPlugin ? root.currentPlugin.id : "" }
+                                InfoField { label: I18n.t("Version", "组件版本"); value: root.currentPlugin ? "v" + root.currentPlugin.version : "" }
+                                InfoField { label: I18n.t("Maintainer", "维护者"); value: root.currentPlugin ? root.currentPlugin.author : "" }
                                 InfoField {
-                                    label: "集成方式"
+                                    label: I18n.t("Integration", "集成方式")
                                     value: root.currentPlugin
-                                           ? (root.currentPlugin.category === "hook" ? "构建后处理（本地集成）" : "镜像处理（本地工具）")
+                                           ? (root.currentPlugin.category === "hook"
+                                              ? I18n.t("After Build (local integration)", "构建后处理（本地集成）")
+                                              : I18n.t("Image processing (local tool)", "镜像处理（本地工具）"))
                                            : ""
                                 }
                             }
@@ -449,7 +458,7 @@ Item {
                                     spacing: 5
 
                                     Text {
-                                        text: "实施要求"
+                                        text: I18n.t("Requirements", "实施要求")
                                         color: Theme.warning
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
@@ -457,7 +466,7 @@ Item {
                                     }
 
                                     Repeater {
-                                        model: root.currentPlugin ? root.currentPlugin.notes : []
+                                        model: root.currentPlugin ? I18n.pluginNotes(root.currentPlugin.id, root.currentPlugin.notes) : []
 
                                         delegate: Text {
                                             required property var modelData
@@ -484,7 +493,7 @@ Item {
                                     spacing: 8
 
                                     Text {
-                                        text: "目标配置状态"
+                                        text: I18n.t("Target configuration status", "目标配置状态")
                                         color: Theme.textPrimary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 14
@@ -496,9 +505,9 @@ Item {
                                                  && root.currentPlugin.targetCount > 0
                                         text: root.currentPlugin
                                               ? (root.currentPlugin.needsMigrationCount > 0
-                                                 ? root.currentPlugin.needsMigrationCount + " 个待更新"
+                                                 ? I18n.t(root.currentPlugin.needsMigrationCount + " update(s) needed", root.currentPlugin.needsMigrationCount + " 个待更新")
                                                  : root.currentPlugin.installedCount + "/"
-                                                   + root.currentPlugin.targetCount + " 已配置")
+                                                   + root.currentPlugin.targetCount + I18n.t(" configured", " 已配置"))
                                               : ""
                                         accent: root.currentPlugin
                                                 && root.currentPlugin.needsMigrationCount > 0
@@ -527,11 +536,11 @@ Item {
                                         anchors.rightMargin: 12
                                         spacing: 12
 
-                                        Text { Layout.preferredWidth: 150; text: "工程文件"; color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                        Text { Layout.preferredWidth: 150; text: "构建目标"; color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                        Text { Layout.preferredWidth: 150; text: "目标器件"; color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                        Text { Layout.preferredWidth: 150; text: I18n.t("Project file", "工程文件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                        Text { Layout.preferredWidth: 150; text: I18n.t("Build target", "构建目标"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                        Text { Layout.preferredWidth: 150; text: I18n.t("Device", "目标器件"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold }
                                         Item { Layout.fillWidth: true }
-                                        Text { Layout.preferredWidth: 74; text: "配置状态"; color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; horizontalAlignment: Text.AlignHCenter }
+                                        Text { Layout.preferredWidth: 74; text: I18n.t("Status", "配置状态"); color: Theme.textTertiary; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; horizontalAlignment: Text.AlignHCenter }
                                     }
                                 }
 
@@ -590,10 +599,12 @@ Item {
                                                     const migrations = root.currentPlugin
                                                                        ? root.currentPlugin.perTargetNeedsMigration : []
                                                     if (migrations[targetRow.index])
-                                                        return "待更新"
+                                                        return I18n.t("Update", "待更新")
                                                     const perTarget = root.currentPlugin
                                                                       ? root.currentPlugin.perTarget : []
-                                                    return perTarget[targetRow.index] ? "已配置" : "未配置"
+                                                    return perTarget[targetRow.index]
+                                                           ? I18n.t("Configured", "已配置")
+                                                           : I18n.t("Not configured", "未配置")
                                                 }
                                                 accent: {
                                                     const migrations = root.currentPlugin
@@ -620,7 +631,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "镜像合并参数"
+                                    text: I18n.t("Image merge parameters", "镜像合并参数")
                                     color: Theme.textPrimary
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 14
@@ -633,7 +644,7 @@ Item {
 
                                     Text {
                                         Layout.preferredWidth: 96
-                                        text: "Bootloader 镜像"
+                                        text: I18n.t("Bootloader image", "Bootloader 镜像")
                                         color: Theme.textSecondary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
@@ -642,13 +653,13 @@ Item {
                                     PathField {
                                         id: bootHexField
                                         Layout.fillWidth: true
-                                        placeholder: "选择 Bootloader Intel HEX 文件"
+                                        placeholder: I18n.t("Select a Bootloader Intel HEX file", "选择 Bootloader Intel HEX 文件")
                                     }
 
                                     AppButton {
                                         compact: true
                                         textPixelSize: 12
-                                        text: "浏览…"
+                                        text: I18n.t("Browse…", "浏览…")
                                         onClicked: bootHexDialog.open()
                                     }
                                 }
@@ -659,7 +670,7 @@ Item {
 
                                     Text {
                                         Layout.preferredWidth: 96
-                                        text: "应用镜像"
+                                        text: I18n.t("Application image", "应用镜像")
                                         color: Theme.textSecondary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
@@ -668,13 +679,13 @@ Item {
                                     PathField {
                                         id: appHexField
                                         Layout.fillWidth: true
-                                        placeholder: "选择应用程序 Intel HEX 文件"
+                                        placeholder: I18n.t("Select an application Intel HEX file", "选择应用程序 Intel HEX 文件")
                                     }
 
                                     AppButton {
                                         compact: true
                                         textPixelSize: 12
-                                        text: "浏览…"
+                                        text: I18n.t("Browse…", "浏览…")
                                         onClicked: appHexDialog.open()
                                     }
                                 }
@@ -685,7 +696,7 @@ Item {
 
                                     Text {
                                         Layout.preferredWidth: 96
-                                        text: "输出镜像"
+                                        text: I18n.t("Output image", "输出镜像")
                                         color: Theme.textSecondary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 12
@@ -694,13 +705,13 @@ Item {
                                     PathField {
                                         id: outputHexField
                                         Layout.fillWidth: true
-                                        placeholder: "选择合并镜像的保存路径"
+                                        placeholder: I18n.t("Choose where to save the merged image", "选择合并镜像的保存路径")
                                     }
 
                                     AppButton {
                                         compact: true
                                         textPixelSize: 12
-                                        text: "保存到…"
+                                        text: I18n.t("Save as…", "保存到…")
                                         onClicked: outputHexDialog.open()
                                     }
                                 }
@@ -711,7 +722,7 @@ Item {
 
                                     AppButton {
                                         leadingSymbol: "⊕"
-                                        text: "生成合并镜像"
+                                        text: I18n.t("Generate merged image", "生成合并镜像")
                                         variant: "primary"
                                         accent: Theme.cyan
                                         onClicked: PluginManager.runTool("hex-merge", {
@@ -723,7 +734,7 @@ Item {
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: "检测到地址重叠时立即中止，不生成输出文件"
+                                        text: I18n.t("Address overlap stops the operation; no output file is created.", "检测到地址重叠时立即中止，不生成输出文件")
                                         color: Theme.textTertiary
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 11
@@ -749,7 +760,8 @@ Item {
                             visible: root.hookPlugin
                             leadingSymbol: "＋"
                             text: root.currentPlugin && root.currentPlugin.needsMigrationCount > 0
-                                  ? "更新工程集成" : "配置到工程"
+                                  ? I18n.t("Update Project Integration", "更新工程集成")
+                                  : I18n.t("Configure Project", "配置到工程")
                             variant: "primary"
                             enabled: PluginManager.projectLoaded && root.currentPlugin
                                      && (root.currentPlugin.installedCount
@@ -761,7 +773,7 @@ Item {
                         AppButton {
                             visible: root.hookPlugin
                             leadingSymbol: "−"
-                            text: "从工程移除"
+                            text: I18n.t("Remove from Project", "从工程移除")
                             variant: "danger"
                             enabled: PluginManager.projectLoaded && root.currentPlugin
                                      && root.currentPlugin.installedCount > 0
@@ -770,14 +782,14 @@ Item {
 
                         AppButton {
                             visible: root.hookPlugin
-                            text: "重新检测"
+                            text: I18n.t("Recheck", "重新检测")
                             onClicked: PluginManager.reloadProject()
                         }
 
                         AppButton {
                             visible: root.hookPlugin
                             leadingSymbol: "◫"
-                            text: "查看存储分析"
+                            text: I18n.t("View Memory Analysis", "查看存储分析")
                             variant: "outlined"
                             accent: Theme.cyan
                             enabled: PluginManager.projectLoaded
@@ -819,24 +831,24 @@ Item {
 
     FileDialog {
         id: bootHexDialog
-        title: "选择 Bootloader 镜像"
-        nameFilters: ["Intel HEX (*.hex)", "所有文件 (*)"]
+        title: I18n.t("Select Bootloader Image", "选择 Bootloader 镜像")
+        nameFilters: ["Intel HEX (*.hex)", I18n.t("All files (*)", "所有文件 (*)")]
         fileMode: FileDialog.OpenFile
         onAccepted: bootHexField.text = selectedFile
     }
 
     FileDialog {
         id: appHexDialog
-        title: "选择应用程序镜像"
-        nameFilters: ["Intel HEX (*.hex)", "所有文件 (*)"]
+        title: I18n.t("Select Application Image", "选择应用程序镜像")
+        nameFilters: ["Intel HEX (*.hex)", I18n.t("All files (*)", "所有文件 (*)")]
         fileMode: FileDialog.OpenFile
         onAccepted: appHexField.text = selectedFile
     }
 
     FileDialog {
         id: outputHexDialog
-        title: "保存合并镜像"
-        nameFilters: ["Intel HEX (*.hex)", "所有文件 (*)"]
+        title: I18n.t("Save Merged Image", "保存合并镜像")
+        nameFilters: ["Intel HEX (*.hex)", I18n.t("All files (*)", "所有文件 (*)")]
         fileMode: FileDialog.SaveFile
         onAccepted: outputHexField.text = selectedFile
     }

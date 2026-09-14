@@ -12,6 +12,8 @@ $DeployDirectory = Join-Path $ProjectRoot "dist\KeilPluginStudio"
 $DeployExecutable = Join-Path $DeployDirectory "KeilPluginStudio.exe"
 $Readme = Join-Path $ProjectRoot "README.md"
 $DeployReadme = Join-Path $DeployDirectory "README.md"
+$ChineseReadme = Join-Path $ProjectRoot "README_zh-CN.md"
+$DeployChineseReadme = Join-Path $DeployDirectory "README_zh-CN.md"
 $Shots = Join-Path $ProjectRoot "shots"
 
 . (Join-Path $PSScriptRoot "qt-toolchain.ps1")
@@ -32,6 +34,9 @@ if (-not (Test-Path -LiteralPath $DeployExecutable)) {
 New-Item -ItemType Directory -Force -Path $DeployDirectory | Out-Null
 if (Test-Path -LiteralPath $Readme) {
     Copy-Item -LiteralPath $Readme -Destination $DeployReadme -Force
+}
+if (Test-Path -LiteralPath $ChineseReadme) {
+    Copy-Item -LiteralPath $ChineseReadme -Destination $DeployChineseReadme -Force
 }
 if (Test-Path -LiteralPath $Shots) {
     Copy-Item -LiteralPath $Shots -Destination $DeployDirectory -Recurse -Force

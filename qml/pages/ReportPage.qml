@@ -120,8 +120,8 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: usageCard.cap > 0
-                      ? "剩余 " + root.fmtKB(Math.max(0, usageCard.cap - usageCard.used))
-                      : "工程配置中未识别到 IROM/IRAM 容量"
+                      ? I18n.t("Remaining ", "剩余 ") + root.fmtKB(Math.max(0, usageCard.cap - usageCard.used))
+                      : I18n.t("IROM/IRAM capacity was not found in the project configuration", "工程配置中未识别到 IROM/IRAM 容量")
                 color: Theme.textTertiary
                 font.family: Theme.fontFamily
                 font.pixelSize: 11
@@ -223,7 +223,7 @@ Item {
             spacing: 10
 
             Text {
-                text: "存储占用分析"
+                text: I18n.t("Memory Analysis", "存储占用分析")
                 color: Theme.textPrimary
                 font.family: Theme.fontFamily
                 font.pixelSize: 22
@@ -248,7 +248,7 @@ Item {
                 compact: true
                 textPixelSize: 12
                 leadingSymbol: "↻"
-                text: "刷新分析"
+                text: I18n.t("Refresh", "刷新分析")
                 enabled: PluginManager.projectLoaded
                 onClicked: {
                     PluginManager.reloadProject()
@@ -265,8 +265,8 @@ Item {
                 anchors.fill: parent
                 visible: !PluginManager.projectLoaded
                 symbol: "📂"
-                title: "尚未载入 Keil 工程"
-                hint: "载入 .uvprojx / .uvmpw 后可分析最近一次编译结果"
+                title: I18n.t("No Keil project loaded", "尚未载入 Keil 工程")
+                hint: I18n.t("Load a .uvprojx or .uvmpw project to analyze its latest build.", "载入 .uvprojx / .uvmpw 后可分析最近一次编译结果")
             }
 
             DataUnavailableState {
@@ -275,7 +275,9 @@ Item {
                          && (!root.report || !root.report.ok)
                 symbol: "◫"
                 accent: Theme.warning
-                title: root.report && root.report.reason ? "分析结果不可用" : "暂无分析结果"
+                title: root.report && root.report.reason
+                       ? I18n.t("Analysis unavailable", "分析结果不可用")
+                       : I18n.t("No analysis result", "暂无分析结果")
                 hint: root.report && root.report.reason ? root.report.reason : ""
             }
 
@@ -298,14 +300,14 @@ Item {
 
                         UsageCard {
                             Layout.fillWidth: true
-                            label: "FLASH 镜像占用"
+                            label: I18n.t("FLASH image usage", "FLASH 镜像占用")
                             used: root.report && root.report.ok ? root.report.romUsed : 0
                             cap: root.report && root.report.ok ? root.report.flashCap : 0
                         }
 
                         UsageCard {
                             Layout.fillWidth: true
-                            label: "RAM 运行占用"
+                            label: I18n.t("RAM runtime usage", "RAM 运行占用")
                             used: root.report && root.report.ok ? root.report.ramUsed : 0
                             cap: root.report && root.report.ok ? root.report.ramCap : 0
                         }
@@ -322,7 +324,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "镜像组成（链接器统计）"
+                                text: I18n.t("Image composition (linker statistics)", "镜像组成（链接器统计）")
                                 color: Theme.textPrimary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 14
@@ -381,7 +383,7 @@ Item {
                                 visible: root.report && root.report.ok
                                          && (root.report.code + root.report.roData
                                              + root.report.rwData > root.report.romUsed)
-                                text: "RW-data 在 FLASH 中按镜像形式存放，最终占用以 FLASH 汇总值为准"
+                                text: I18n.t("RW-data is stored in the FLASH image; use the FLASH total for final image usage.", "RW-data 在 FLASH 中按镜像形式存放，最终占用以 FLASH 汇总值为准")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -401,7 +403,7 @@ Item {
                             spacing: 10
 
                             Text {
-                                text: "高占用目标文件与库"
+                                text: I18n.t("Largest object files and libraries", "高占用目标文件与库")
                                 color: Theme.textPrimary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 14
@@ -414,13 +416,13 @@ Item {
 
                                 TopList {
                                     Layout.fillWidth: true
-                                    title: "FLASH 排名"
+                                    title: I18n.t("FLASH ranking", "FLASH 排名")
                                     byRom: true
                                 }
 
                                 TopList {
                                     Layout.fillWidth: true
-                                    title: "RAM 排名"
+                                    title: I18n.t("RAM ranking", "RAM 排名")
                                     byRom: false
                                 }
                             }
@@ -429,7 +431,8 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: root.report && root.report.ok ? "MAP 文件：" + root.report.mapPath : ""
+                        text: root.report && root.report.ok
+                              ? I18n.t("MAP file: ", "MAP 文件：") + root.report.mapPath : ""
                         color: Theme.textTertiary
                         font.family: "Consolas"
                         font.pixelSize: 10

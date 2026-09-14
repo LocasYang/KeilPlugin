@@ -18,6 +18,7 @@ class PluginManager : public QObject
     Q_PROPERTY(QVariantList logs READ logs NOTIFY logsChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(QVariantMap lastResult READ lastResult NOTIFY lastResultChanged)
+    Q_PROPERTY(QString uiLanguage READ uiLanguage NOTIFY uiLanguageChanged)
 
 public:
     explicit PluginManager(QObject *parent = nullptr);
@@ -29,6 +30,7 @@ public:
     QVariantList logs() const { return m_logs; }
     QString statusMessage() const { return m_statusMessage; }
     QVariantMap lastResult() const { return m_lastResult; }
+    QString uiLanguage() const { return m_uiLanguage; }
 
     Q_INVOKABLE bool loadProject(const QVariant &source);
     Q_INVOKABLE void reloadProject();
@@ -38,6 +40,7 @@ public:
     Q_INVOKABLE QVariantMap runTool(const QString &pluginId, const QVariantMap &args);
     Q_INVOKABLE void clearLogs();
     Q_INVOKABLE void appendLog(const QString &level, const QString &message);
+    Q_INVOKABLE void setUiLanguage(const QString &language);
 
 signals:
     void projectChanged();
@@ -45,6 +48,7 @@ signals:
     void logsChanged();
     void statusMessageChanged();
     void lastResultChanged();
+    void uiLanguageChanged();
 
 private:
     void rebuildPluginStates();
@@ -56,4 +60,5 @@ private:
     QVariantList m_logs;
     QString m_statusMessage;
     QVariantMap m_lastResult;
+    QString m_uiLanguage;
 };
