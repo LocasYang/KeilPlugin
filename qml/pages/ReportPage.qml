@@ -22,10 +22,22 @@ Item {
     function refresh() {
         if (targetIndex >= targets.length)
             targetIndex = 0
+        // ComboBox resets its index when its JS-array model is replaced.
+        // Synchronize after that reset, in the same deferred refresh as data.
+        targetSelector.currentIndex = targetIndex
         report = PluginManager.targetReport(targetIndex)
     }
 
-    onTargetsChanged: Qt.callLater(root.refresh)
+    onTargetsChanged: {
+        // Prefer a configuration with build output when opening a project.
+        // NovoStudio commonly has Release output while Debug is still empty.
+        if (targetIndex >= targets.length || !targets[targetIndex].mapFound) {
+            for (let i = 0; i < targets.length; ++i) {
+                if (targets[i].mapFound) { targetIndex = i; break }
+            }
+        }
+        Qt.callLater(root.refresh)
+    }
 
     Component.onCompleted: refresh()
 
@@ -265,8 +277,8 @@ Item {
                 anchors.fill: parent
                 visible: !PluginManager.projectLoaded
                 symbol: "📂"
-                title: I18n.t("No Keil project loaded", "尚未载入 Keil 工程")
-                hint: I18n.t("Load a .uvprojx or .uvmpw project to analyze its latest build.", "载入 .uvprojx / .uvmpw 后可分析最近一次编译结果")
+                title: I18n.t("No ARM project loaded", "尚未载入 ARM 工程")
+                hint: I18n.t("Load a Keil or NovoStudio project to analyze its latest build.", "载入 Keil / NovoStudio 工程后可分析最近一次编译结果")
             }
 
             DataUnavailableState {

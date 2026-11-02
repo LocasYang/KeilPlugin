@@ -11,7 +11,8 @@ class SizeReportPlugin final : public KeilPlugin
 public:
     PluginDescriptor descriptor() const override;
     bool targetInstalled(const KeilTarget &target) const override;
-    UvprojxHook::PatchOutcome installProject(const QString &uvprojxPath) const override;
+    UvprojxHook::PatchOutcome installProject(const QString &uvprojxPath,
+                                             const QString &language) const override;
     UvprojxHook::PatchOutcome uninstallProject(const QString &uvprojxPath) const override;
 };
 

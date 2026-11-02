@@ -2,7 +2,7 @@
 
 **中文** | [English](README.md)
 
-KeilPlugin Studio 是面向 Keil MDK 工程的 Windows 构建辅助与交付工具，用于统一生成
+KeilPlugin Studio 是面向 Keil MDK / NovoStudio GNU Arm 工程的 Windows 构建辅助与交付工具，用于统一生成
 FLASH/RAM 存储占用报告，并完成 Bootloader 与应用程序 Intel HEX 镜像合并。
 
 软件采用 Qt 6 / Qt Quick / C++17 实现，发布包已包含 Qt 运行库和编译器运行库。
@@ -12,18 +12,18 @@ FLASH/RAM 存储占用报告，并完成 Bootloader 与应用程序 Intel HEX �
 
 当前文档为中文版本；可通过顶部的 [English](README.md) 链接切换英文 README。
 软件界面首次启动默认英文，在“系统设置 → 语言”中选择 **English** 或 **中文** 后立即生效，
-并自动保存到当前 Windows 用户设置；语言切换不会修改 Keil 工程。
+并自动保存到当前 Windows 用户设置。配置 Flash/RAM 存储占用分析时，当前语言会以 `--lang en` 或 `--lang zh-CN` 写入 After Build 命令，因此 Keil Build Output 报告也会跟随语言；已配置工程切换语言后，点击“更新工程集成”即可写入新语言。
 
 ## 1. 交付信息
 
 | 项目 | 说明 |
 | --- | --- |
-| 软件版本 | v1.3.0 |
+| 软件版本 | v1.4.0 |
 | 交付状态 | Release |
 | 目标平台 | Windows x64 |
-| 支持工程 | Keil MDK 的 .uvprojx、.uvmpw 和工程目录 |
-| 编译器范围 | Arm Compiler 5 / Arm Compiler 6 的 armlink MAP 输出 |
-| 运行方式 | 图形界面 + Keil After Build 命令行模式 |
+| 支持工程 | Keil 的 .uvprojx / .uvmpw；NovoStudio 的 .cproject / .project / .novoproject；工程目录 |
+| 编译器范围 | Arm Compiler 5 / 6 armlink MAP；GNU Arm 的 MAP + ELF32 小端输出 |
+| 运行方式 | 图形界面 + Keil After Build / NovoStudio Post-build 命令行模式 |
 | 发布目录 | dist\KeilPluginStudio |
 | 主程序 | dist\KeilPluginStudio\KeilPluginStudio.exe |
 | 外部依赖 | 无 Python 依赖；发布目录已包含 Qt 运行库 |
@@ -42,8 +42,39 @@ FLASH/RAM 存储占用报告，并完成 Bootloader 与应用程序 Intel HEX �
 - **操作记录**：记录工程载入、配置、移除、状态刷新和工具执行结果。
 - **系统设置**：配置浅色/深色主题、界面主色，并查看标准工程使用流程。
 
-本工具不会修改固件源代码、Scatter 文件、链接参数或器件配置。只有在用户执行
-“配置到工程”或“从工程移除”时，才会修改 .uvprojx 中的 After Build 用户命令。
+本工具不会修改固件源代码、Scatter/LD 文件、链接参数或器件配置。执行
+“配置到工程”或“从工程移除”时，只修改 .uvprojx 的 After Build 或 .cproject 的 Post-build 命令。
+NovoStudio 的具体操作和统计口径见下节。
+
+### NovoStudio 快速接入（v1.4.0 新增）
+
+1. **关闭 NovoStudio**，避免 IDE 缓存覆盖工程文件。
+2. 运行发布目录中的 `KeilPluginStudio.exe`，点击“载入工程”，选择工程根目录的 `.cproject`（也可选 `.project` / `.novoproject`）。
+3. 在“工程功能”中选择“Flash/RAM 存储占用分析”，点击“配置到工程”。这会为工程中的 Debug、Release 等配置追加报告命令；已有的 BIN 导出、反汇编等命令会保留。
+4. 重新打开 NovoStudio，执行 Build/Rebuild。在构建输出末尾查看与 Keil 相同布局的文件占用表、增量标记、镜像总量、存储分区和 Top-N。
+5. 返回本软件，点击“重新检测”或报告页刷新；首次载入时会优先显示已有 MAP 的配置。
+
+首次写入会创建 `.cproject.keilpluginstudio.bak`。移除集成只移除本软件追加的命令，保留原有步骤。
+切换报告语言或移动软件目录后，关闭 IDE，再“更新工程集成”。
+
+**构建产物要求：** GNU Arm 项目应生成同目录、同名 `.map` 和 `.elf`。ELF 用于识别段属性，缺失或段信息不匹配时会报错，不猜测用量。若工程没有 MAP，可在 NovoStudio 链接器设置中启用 Map 输出；本软件不会替你改变链接参数。自定义 MAP/ELF 路径可用下面的命令行显式指定。
+
+```bat
+KeilPluginStudio.exe --size-report "Release\firmware.elf" --project ".cproject" --target Release --lang en
+KeilPluginStudio.exe --size-report "custom.map" --elf "firmware.elf" --flash 256K --ram 128K
+KeilPluginStudio.exe --install-novo ".cproject" --lang zh-CN
+KeilPluginStudio.exe --remove-novo ".cproject"
+```
+
+安装到 Post-build 的命令使用 `${BuildArtifactFileName}` 和 `${ConfigName}`，只报告当前构建配置。
+Debug/Release 的增量历史分开保存为 `.keilpluginstudio-memory-<配置>-<产物名>.json`，可加入工程的忽略列表。
+独立 MAP 模式不保存工程增量记录。GUI 默认识别标准 GNU Arm managed-build 配置和产物命名；未展开的自定义路径宏会报错。
+
+**统计口径：** Flash 按可加载段的 LMA 统计；RAM 按运行地址 VMA 统计，包含复制到 ITCM/SRAM 的代码、数据、BSS，以及 `.heap` / `.stack` / `._user_heap_stack` 预留。调试信息和已丢弃段不计入。Code/RO/RW 根据 ELF 段属性划分，ZI 含堆栈预留；因此 RAM 不等同于 `arm-none-eabi-size` 的 `data+bss`。MAP 的 MEMORY 范围用于容量和区域分类，重叠地址在总容量中只计一次；分区行显示各自地址范围内的占用，重叠分区不可直接相加。`[linker: ...]` 表示链接器填充、表格或预留，不归属某个源文件。容量是工程分配容量，不是芯片宣传总容量。
+
+**本机验证（2026-11-02）：** 使用 `PV_Inverter_Code_RT7P65` 的独立副本，经 `E:\NovoStudio` 自带 CDT 构建器和 GNU Arm 工具链完成 Release 全量重编译，Post-build 自动输出报告。构建 0 错误、1 条固件原有 `main` 返回类型警告。Flash 为 **139,312 / 262,143 B（53.1%）**，RAM 为 **131,292 / 397,312 B（33.0%）**，其中堆栈预留 7,168 B。原始工程的 `.cproject` 与源码未修改。
+
+语义依据：[GNU ld 的 LMA/VMA](https://www.sourceware.org/binutils/docs/ld/Output-Section-LMA.html)、[Eclipse CDT 构建后步骤](https://help.eclipse.org/latest/topic/org.eclipse.cdt.doc.user/reference/cdt_u_prop_build_settings_steps.htm)。以下 Keil 专用操作和示意截图仍适用于 Keil 工程。
 
 ### 2.1 软件界面示意
 
@@ -225,7 +256,7 @@ After Build 命令记录的是配置时的 EXE 绝对路径。移动或重命名
 新工程优先使用 AfterMake slot2，典型命令如下：
 
 ~~~text
-"C:\...\KeilPluginStudio.exe" --size-report "#L" --project "demo.uvprojx"
+"C:\...\KeilPluginStudio.exe" --size-report "#L" --project "demo.uvprojx" --lang zh-CN
 ~~~
 
 处理规则：
@@ -255,7 +286,7 @@ MAP 文件允许位于自定义 Listing 或 Output 目录。软件按以下优�
 ### 10.1 存储报告
 
 ~~~text
-KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" [options]
+KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" --lang en|zh-CN [options]
 ~~~
 
 | 参数 | 说明 |
@@ -265,6 +296,7 @@ KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" [options]
 | --top N | 设置热点榜单行数，默认 20；0 表示关闭热点榜单 |
 | --flash 230K | 工程未声明容量时手工指定 FLASH 容量 |
 | --ram 64K | 工程未声明容量时手工指定 RAM 容量 |
+| --lang en\|zh-CN | Build Output 报告语言；工程集成会自动写入 |
 | --quiet | 仅执行解析，不打印完整报告 |
 
 **--top** 只控制末尾热点榜单，不影响完整文件增量表和 Execution Region 表。

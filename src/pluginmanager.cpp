@@ -12,7 +12,6 @@
 
 namespace {
 constexpr int kMaxLogEntries = 600;
-constexpr int kMaxReportComponents = 12;
 
 QVariantList sortedComponents(const QVector<MapComponent> &components, bool byRom)
 {
@@ -32,8 +31,8 @@ QVariantList sortedComponents(const QVector<MapComponent> &components, bool byRo
                   const qint64 keyB = mb.value(byRom ? "rom" : "ram").toLongLong();
                   return keyA > keyB;
               });
-    if (sorted.size() > kMaxReportComponents)
-        sorted.erase(sorted.begin() + kMaxReportComponents, sorted.end());
+    // QML independently ranks FLASH and RAM. Truncating by FLASH here loses
+    // RAM-heavy objects (for example a large zero-initialized debug buffer).
     return sorted;
 }
 
@@ -90,7 +89,7 @@ bool PluginManager::loadProject(const QVariant &source)
 
     if (loaded) {
         appendLog(QStringLiteral("success"),
-                  QStringLiteral("Keil 工程已载入：%1（%2 个 Target）")
+                  QStringLiteral("工程已载入：%1（%2 个 Target）")
                       .arg(path)
                       .arg(m_project->targetList().size()));
         setStatusMessage(QStringLiteral("工程：%1 · Target %2")
@@ -122,7 +121,7 @@ bool PluginManager::installPlugin(const QString &pluginId)
         return false;
     }
     if (!projectLoaded()) {
-        pushResult(false, QStringLiteral("请先载入 Keil 工程"));
+        pushResult(false, QStringLiteral("请先载入 Keil / NovoStudio 工程"));
         return false;
     }
 
@@ -133,7 +132,7 @@ bool PluginManager::installPlugin(const QString &pluginId)
     bool allOk = true;
     bool anyChanged = false;
     for (const QString &uvprojx : m_project->data().uvprojxFiles) {
-        const UvprojxHook::PatchOutcome outcome = plugin->installProject(uvprojx);
+        const UvprojxHook::PatchOutcome outcome = plugin->installProject(uvprojx, m_uiLanguage);
         for (const QString &note : outcome.notes)
             appendLog(QStringLiteral("info"), note);
         if (!outcome.error.isEmpty()) {
@@ -171,7 +170,7 @@ bool PluginManager::uninstallPlugin(const QString &pluginId)
         return false;
     }
     if (!projectLoaded()) {
-        pushResult(false, QStringLiteral("请先载入 Keil 工程"));
+        pushResult(false, QStringLiteral("请先载入 Keil / NovoStudio 工程"));
         return false;
     }
 
@@ -231,17 +230,23 @@ QVariantMap PluginManager::targetReport(int targetIndex) const
 
     if (!target.mapFound) {
         report.insert(QStringLiteral("reason"),
-                      QStringLiteral(".map 文件未找到，请先在 Keil 中编译一次"));
+                      QStringLiteral(".map 文件未找到，请先在对应 IDE 中编译一次"));
         return report;
     }
 
-    const MapSummary summary = MapParser::parse(target.mapPath);
+    const MapSummary summary = MapParser::parse(target.mapPath, target.elfPath);
     if (!summary.ok) {
         report.insert(QStringLiteral("reason"), summary.error);
         return report;
     }
 
     report.insert(QStringLiteral("ok"), true);
+    if (summary.gnu) {
+        report.insert(QStringLiteral("flashCap"), summary.flashCapacity);
+        report.insert(QStringLiteral("ramCap"), summary.ramCapacity);
+    }
+    report.insert(QStringLiteral("gnu"), summary.gnu);
+    report.insert(QStringLiteral("reservedRam"), summary.reservedRam);
     report.insert(QStringLiteral("mapPath"), summary.mapPath);
     report.insert(QStringLiteral("romUsed"), summary.totalROM);
     report.insert(QStringLiteral("ramUsed"), summary.totalRW);
@@ -288,6 +293,7 @@ void PluginManager::setUiLanguage(const QString &language)
     m_uiLanguage = normalized;
     QSettings settings;
     settings.setValue(QStringLiteral("Ui/language"), m_uiLanguage);
+    rebuildPluginStates();
     emit uiLanguageChanged();
 }
 
@@ -332,7 +338,8 @@ void PluginManager::rebuildPluginStates()
         for (const KeilTarget &target : targets) {
             const bool installed = plugin->targetInstalled(target);
             const bool needsMigration = descriptor.id == QLatin1String("keil-size-report")
-                                        && target.legacyMemoryReportInstalled;
+                    && (target.legacyMemoryReportInstalled
+                        || (target.hookInstalled && target.reportLanguage != m_uiLanguage));
             perTarget.append(installed);
             perTargetNeedsMigration.append(needsMigration);
             if (installed)

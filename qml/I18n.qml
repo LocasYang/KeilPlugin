@@ -45,7 +45,7 @@ QtObject {
         if (!english)
             return fallback
         if (pluginId === "keil-size-report")
-            return "Parse the armlink .map file after a build and print one unified memory report in Keil Build Output."
+            return "Unified Flash/RAM reports for Keil armlink and NovoStudio GNU Arm builds."
         if (pluginId === "hex-merge")
             return "Validate and merge Bootloader and application Intel HEX files into a deliverable image."
         return fallback
@@ -55,7 +55,7 @@ QtObject {
         if (!english)
             return fallback
         if (pluginId === "keil-size-report")
-            return "Project integration writes an After Build command that invokes this application's command-line mode. After every Build/Rebuild it parses the generated .map file and prints a unified report with full source-file usage, image totals, Execution Region bars, and Top-N hotspots. Capacity limits are read from IROM()/IRAM() in the uvprojx <Cpu> section. When both After Build slots are occupied, the original command is wrapped and restored on removal. Existing keil-build-viewer hooks can be consolidated into one reversible report hook."
+            return "Supports Keil .uvprojx and NovoStudio .cproject projects. NovoStudio reports use matching MAP + ELF files and linker MEMORY capacities, including code executed in RAM and heap/stack reservations. The report is appended to Post-build steps, preserving existing BIN/disassembly commands. Keil integration uses After Build and IROM/IRAM capacities as before. Both display file usage, build deltas, image totals, memory regions and Top-N hotspots."
         if (pluginId === "hex-merge")
             return "Reads two Intel HEX files locally (Type 00/01/02/04/05), checks every byte for address overlap, then emits a merged HEX file using linear address records. Any address conflict stops the operation before an incomplete output is created."
         return fallback
@@ -65,7 +65,8 @@ QtObject {
         if (!english)
             return fallback
         if (pluginId === "keil-size-report")
-            return ["Close Keil before configuring or removing integration so its cached project settings cannot overwrite the change.",
+            return ["Close Keil / NovoStudio before configuring or removing integration so cached settings cannot overwrite the change.",
+                    "NovoStudio requires matching MAP and ELF files; Debug/Release keep separate delta histories.",
                     "Confirm Target Options → Listing → Memory Map is enabled (enabled by default in Keil).",
                     "No Python environment is required; the After Build hook calls this application directly.",
                     "Use --flash/--ram when IROM/IRAM capacity is not declared by the project.",

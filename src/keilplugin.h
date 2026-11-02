@@ -40,7 +40,8 @@ public:
     virtual bool targetInstalled(const KeilTarget &target) const;
 
     // Hook plugins: install/uninstall the build hook in one uvprojx file.
-    virtual UvprojxHook::PatchOutcome installProject(const QString &uvprojxPath) const;
+    virtual UvprojxHook::PatchOutcome installProject(const QString &uvprojxPath,
+                                                      const QString &language) const;
     virtual UvprojxHook::PatchOutcome uninstallProject(const QString &uvprojxPath) const;
 
     // Tool plugins: run the tool with caller supplied arguments.

@@ -129,15 +129,15 @@ Item {
             messageText: updating
                          ? I18n.t("Consolidate legacy memory reports into one " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " report.",
                                   "将旧内存报告合并为「" + currentPlugin.name + "」统一输出")
-                         : I18n.t("Add " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " to the selected Keil project's After Build workflow.",
-                                  "将「" + currentPlugin.name + "」接入所选 Keil 工程的构建后处理流程"),
+                         : I18n.t("Add " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " to the selected project's post-build workflow.",
+                                  "将「" + currentPlugin.name + "」接入所选工程的构建后处理流程"),
             noteText: (updating
                       ? I18n.t("Duplicate keil-build-viewer output will be disabled, and the original command will be kept for restoration.",
                                "将停用 keil-build-viewer 的重复输出，并保留移除集成时可恢复的原命令。")
-                      : I18n.t("This operation changes the After Build user command in the uvprojx file.",
-                               "本操作会修改 uvprojx 文件中的 After Build 用户命令。"))
-                      + I18n.t(" Close Keil first so cached settings cannot overwrite this change.",
-                                 "执行前请关闭 Keil，避免其退出时以旧配置覆盖本次变更。"),
+                      : I18n.t("This operation updates post-build commands for all configurations in the project file.",
+                               "本操作会更新工程文件中所有构建配置的构建后命令。"))
+                      + I18n.t(" Close Keil / NovoStudio first so cached settings cannot overwrite this change.",
+                                 "执行前请关闭 Keil / NovoStudio，避免其退出时以旧配置覆盖本次变更。"),
             accent: Theme.primary,
             riskText: I18n.t("Moderate", "中风险"),
             confirmText: updating ? I18n.t("Update", "确认更新") : I18n.t("Apply", "写入工程配置"),
@@ -157,10 +157,10 @@ Item {
         pendingOperation = "uninstall"
         showConfirmDialog().openFor({
             titleText: I18n.t("Remove Project Integration", "移除工程集成"),
-            messageText: I18n.t("Remove " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " from the selected Keil project's After Build workflow.",
-                                "将从所选 Keil 工程移除「" + currentPlugin.name + "」的构建后处理配置"),
-            noteText: I18n.t("The original After Build command will be restored and legacy Python hooks will be cleaned up. Close Keil first so it cannot overwrite this change.",
-                              "移除后会还原原有 After Build 用户命令，并清理旧版 Python 脚本钩子。执行前请关闭 Keil，避免其退出时覆盖本次变更。"),
+            messageText: I18n.t("Remove " + I18n.pluginName(currentPlugin.id, currentPlugin.name) + " from the selected project's post-build workflow.",
+                                "将从所选工程移除「" + currentPlugin.name + "」的构建后处理配置"),
+            noteText: I18n.t("Existing post-build commands will be preserved. Close Keil / NovoStudio first so cached settings cannot overwrite this change.",
+                              "移除时保留原有构建后命令。执行前请关闭 Keil / NovoStudio，避免其退出时覆盖本次变更。"),
             accent: Theme.warning,
             riskText: I18n.t("Moderate", "中风险"),
             confirmText: I18n.t("Remove", "确认移除"),

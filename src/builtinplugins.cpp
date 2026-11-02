@@ -1,6 +1,7 @@
 #include "builtinplugins.h"
 
 #include "hexmerger.h"
+#include "novoproject.h"
 
 #include <QFileInfo>
 
@@ -9,12 +10,15 @@ PluginDescriptor SizeReportPlugin::descriptor() const
     PluginDescriptor descriptor;
     descriptor.id = QStringLiteral("keil-size-report");
     descriptor.name = QStringLiteral("Flash/RAM 存储占用分析");
-    descriptor.version = QStringLiteral("1.3.0");
+    descriptor.version = QStringLiteral("1.4.0");
     descriptor.author = QStringLiteral("Fayne Yang");
     descriptor.summary =
-            QStringLiteral("编译完成后解析 armlink .map 文件，并在 Keil Build Output 中输出统一的存储占用报告");
+            QStringLiteral("支持 Keil armlink 与 NovoStudio GNU Arm，在构建窗口输出统一的 Flash/RAM 报告");
     descriptor.description =
-            QStringLiteral("配置到工程后写入 After Build 用户命令（调用本软件的命令行模式），"
+            QStringLiteral("支持 Keil .uvprojx 和 NovoStudio .cproject。NovoStudio 使用 MAP + ELF 统计，"
+                           "容量取链接器 MEMORY 地址范围，RAM 包含运行于 RAM 的代码及堆栈预留；"
+                           "追加 Post-build 命令并保留原有 BIN/反汇编操作。"
+                           "Keil 配置到工程后写入 After Build 用户命令（调用本软件的命令行模式），"
                            "每次 Build/Rebuild 结束时解析生成的 .map 文件，统一输出带增量标记的完整源文件表、"
                            "镜像总量、Execution Region 状态条和 Top-N 热点榜单："
                            "占用值取自 Total RO/RW/ROM Size 三行，容量上限自动取 uvprojx 中 "
@@ -28,7 +32,8 @@ PluginDescriptor SizeReportPlugin::descriptor() const
                                             QStringLiteral("report") };
     descriptor.viewLabel = QStringLiteral("存储占用分析");
     descriptor.notes = QStringList {
-        QStringLiteral("配置或移除工程集成前请先关闭 Keil，避免其退出时以旧配置覆盖本次变更"),
+        QStringLiteral("配置或移除工程集成前请先关闭 Keil / NovoStudio，避免缓存覆盖本次变更"),
+        QStringLiteral("NovoStudio 需同时生成同名 MAP 和 ELF；Debug / Release 分别保存占用变化记录"),
         QStringLiteral("需确认 Target Options → Listing → Memory Map 已启用（Keil 默认启用）"),
         QStringLiteral("工程无需配置 Python 环境，构建后处理直接调用本软件"),
         QStringLiteral("若工程未声明 IROM/IRAM 容量，可通过 --flash/--ram 参数补充"),
@@ -42,13 +47,18 @@ bool SizeReportPlugin::targetInstalled(const KeilTarget &target) const
     return target.hookInstalled;
 }
 
-UvprojxHook::PatchOutcome SizeReportPlugin::installProject(const QString &uvprojxPath) const
+UvprojxHook::PatchOutcome SizeReportPlugin::installProject(const QString &uvprojxPath,
+                                                            const QString &language) const
 {
-    return UvprojxHook::installInFile(uvprojxPath);
+    if (QFileInfo(uvprojxPath).fileName() == QLatin1String(".cproject"))
+        return NovoProject::patchFile(uvprojxPath, false, language);
+    return UvprojxHook::installInFile(uvprojxPath, language);
 }
 
 UvprojxHook::PatchOutcome SizeReportPlugin::uninstallProject(const QString &uvprojxPath) const
 {
+    if (QFileInfo(uvprojxPath).fileName() == QLatin1String(".cproject"))
+        return NovoProject::patchFile(uvprojxPath, true);
     return UvprojxHook::uninstallInFile(uvprojxPath);
 }
 

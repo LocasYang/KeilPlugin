@@ -2,7 +2,7 @@
 
 [中文文档](README_zh-CN.md) | **English**
 
-KeilPlugin Studio is a Windows build-assistance and delivery tool for Keil MDK projects. It produces a unified FLASH/RAM memory report from armlink MAP files and merges Bootloader and application Intel HEX images.
+KeilPlugin Studio is a Windows build-assistance and delivery tool for Keil MDK and NovoStudio GNU Arm projects. It produces unified FLASH/RAM reports from armlink MAP or GNU MAP + ELF files and merges Bootloader and application Intel HEX images.
 
 Built with Qt 6 / Qt Quick / C++17, the release package contains the required Qt and compiler runtime libraries. The target PC does not need Qt, Python, or an external script environment.
 
@@ -10,12 +10,12 @@ Built with Qt 6 / Qt Quick / C++17, the release package contains the required Qt
 
 | Item | Description |
 | --- | --- |
-| Version | v1.3.0 |
+| Version | v1.4.0 |
 | Delivery status | Release |
 | Platform | Windows x64 |
-| Supported inputs | Keil MDK `.uvprojx`, `.uvmpw`, and project directories |
-| Compiler output | Arm Compiler 5 / 6 armlink MAP files |
-| Operation | GUI and Keil After Build command-line mode |
+| Supported inputs | Keil `.uvprojx` / `.uvmpw`; NovoStudio `.cproject` / `.project` / `.novoproject`; project directories |
+| Compiler output | Arm Compiler 5 / 6 armlink MAP; GNU Arm MAP + little-endian ELF32 |
+| Operation | GUI, Keil After Build and NovoStudio Post-build CLI |
 | Distribution directory | `dist\\KeilPluginStudio` |
 | Application | `dist\\KeilPluginStudio\\KeilPluginStudio.exe` |
 | Dependencies | No Python dependency; Qt runtime is bundled |
@@ -30,7 +30,34 @@ When copying or delivering the application, keep the whole `dist\\KeilPluginStud
 - **Activity Log** — records project loading, integration, removal, refresh, and tool results.
 - **Settings** — selects light/dark appearance, accent color, and English/Chinese UI language.
 
-The tool does not modify firmware source, Scatter files, linker options, or device settings. Only **Configure Project** and **Remove from Project** modify the After Build user command in `.uvprojx` files.
+The tool does not modify firmware source, Scatter/LD files, linker options, or device settings. Integration changes only After Build commands in `.uvprojx` or Post-build commands in `.cproject` files.
+
+### NovoStudio integration (new in v1.4.0)
+
+1. Close NovoStudio so cached settings cannot overwrite the change.
+2. Run the distributed EXE and load the project's `.cproject` (or `.project` / `.novoproject`).
+3. Configure **Flash/RAM Memory Analysis**. A report command is appended to each build configuration, preserving existing BIN export and disassembly steps.
+4. Reopen NovoStudio and Build/Rebuild. The console shows the same file table, deltas, totals, region bars and Top-N report as Keil.
+5. Refresh the GUI to review the output. A configuration with an existing MAP is selected initially.
+
+The first write creates `.cproject.keilpluginstudio.bak`. Removal deletes only the generated report command. Update integration after changing language or moving the executable. The hook uses `${BuildArtifactFileName}` and `${ConfigName}`, so each build reports its own configuration. Debug/Release delta histories are stored separately in `.keilpluginstudio-memory-<configuration>-<artifact>.json`.
+
+GNU reports require matching, adjacent `.map` and `.elf` files. Missing ELF or inconsistent section information produces an error. Enable MAP generation in the IDE if needed; this application does not change linker options. For custom paths use:
+
+```bat
+KeilPluginStudio.exe --size-report "Release\firmware.elf" --project ".cproject" --target Release --lang en
+KeilPluginStudio.exe --size-report "custom.map" --elf "firmware.elf" --flash 256K --ram 128K
+KeilPluginStudio.exe --install-novo ".cproject" --lang en
+KeilPluginStudio.exe --remove-novo ".cproject"
+```
+
+The GUI supports standard GNU Arm managed-build configurations and artifact names. Unresolved custom path macros are rejected. Standalone MAP reports do not store project history.
+
+Flash usage follows load addresses (LMA); RAM follows execution addresses (VMA), including code copied to RAM, BSS and `.heap` / `.stack` / `._user_heap_stack` reservations. Debug and discarded sections are excluded. Code/RO/RW follow ELF section attributes; ZI includes reservations. RAM therefore differs from GNU size's `data+bss`. Capacities come from linker MEMORY ranges, with overlapping addresses counted once in totals. Region rows show occupied addresses within each range and cannot be summed when ranges overlap. `[linker: ...]` rows expose padding, generated tables and reservations. Capacity means the project's allocated address space, not the chip's marketing capacity.
+
+Validated on 2026-11-02 using a separate copy of `PV_Inverter_Code_RT7P65`, NovoStudio's CDT builder and bundled GNU Arm toolchain. A full Release rebuild printed the report automatically: **139,312 / 262,143 B Flash (53.1%)**, **131,292 / 397,312 B RAM (33.0%)**, including 7,168 B heap/stack reservations. Build result: zero errors and one existing firmware warning about `main`'s return type. The original project configuration and sources were unchanged.
+
+References: [GNU ld LMA/VMA](https://www.sourceware.org/binutils/docs/ld/Output-Section-LMA.html), [Eclipse CDT Build Steps](https://help.eclipse.org/latest/topic/org.eclipse.cdt.doc.user/reference/cdt_u_prop_build_settings_steps.htm). The Keil-specific procedures and screenshots below remain applicable to Keil projects.
 
 ### 2.1 User Interface
 
@@ -56,7 +83,9 @@ This file is the English README. Use the link at the top to switch to [中文文
 
 ### 3.2 Application language
 
-The GUI defaults to English. Open **Settings → Language** and select **English** or **中文**. The choice takes effect immediately and is saved locally for the next launch. Changing the UI language does not modify the Keil project.
+The GUI defaults to English. Open **Settings → Language** and select **English** or **中文**. The choice takes effect immediately and is saved locally for the next launch.
+
+When Flash/RAM Memory Analysis is configured, the selected language is stored in its After Build command (`--lang en` or `--lang zh-CN`). Therefore the Keil Build Output report follows the language selected when integration is applied, even on another machine. After changing the language for an already integrated project, choose **Update Project Integration** to update the stored command.
 
 ## 4. Requirements Before Use
 
@@ -109,7 +138,7 @@ Execution regions are grouped as **ROM / FLASH**, **RAM**, or **UNKNOWN**. Custo
 For a new project, the tool prefers the second After Build slot. A typical command is:
 
 ```text
-"C:\\...\\KeilPluginStudio.exe" --size-report "#L" --project "demo.uvprojx"
+"C:\\...\\KeilPluginStudio.exe" --size-report "#L" --project "demo.uvprojx" --lang en
 ```
 
 Integration behavior:
@@ -143,7 +172,7 @@ Recursive search is limited to four levels. Files matching `OutputName` are pref
 ### 8.1 Memory report
 
 ```text
-KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" [options]
+KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" --lang en|zh-CN [options]
 ```
 
 | Option | Description |
@@ -153,6 +182,7 @@ KeilPluginStudio.exe --size-report "#L" --project "<uvprojx>" [options]
 | `--top N` | Number of hotspot entries; default 20, 0 disables only this table |
 | `--flash 230K` | Manual FLASH capacity when the project does not declare it |
 | `--ram 64K` | Manual RAM capacity when the project does not declare it |
+| `--lang en\|zh-CN` | Build Output report language; integration writes this automatically |
 | `--quiet` | Parses data without printing the complete report |
 
 ### 8.2 Internal wrapper commands

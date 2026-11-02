@@ -17,6 +17,9 @@ struct PatchOutcome {
 QStringList toolMarkers();
 bool containsToolMarker(const QString &text);
 bool containsLegacyMemoryReport(const QString &text);
+// Language encoded in an installed memory-report command. Empty means an
+// older hook that did not persist its output language.
+QString reportLanguage(const QString &text);
 
 // After Build command written into the project. The "#L" key sequence is
 // expanded by Keil to the CURRENT target's linker output (.axf), so each
@@ -27,12 +30,15 @@ bool containsLegacyMemoryReport(const QString &text);
 // restore command is stored as metadata but is not executed; uninstall uses it
 // to restore a legacy memory-report command that this hook replaced.
 QString hookCommand(const QString &uvprojxPath, const QString &wrap = QString(),
-                    bool wrapBase64 = false, const QString &restore = QString());
+                    bool wrapBase64 = false, const QString &restore = QString(),
+                    const QString &language = QStringLiteral("en"));
 
 // Patches every <AfterMake> block inside the raw (still XML-escaped) text.
-PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, bool remove);
+PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, bool remove,
+                              const QString &language = QStringLiteral("en"));
 
-PatchOutcome installInFile(const QString &uvprojxPath);
+PatchOutcome installInFile(const QString &uvprojxPath,
+                           const QString &language = QStringLiteral("en"));
 PatchOutcome uninstallInFile(const QString &uvprojxPath);
 
 } // namespace UvprojxHook

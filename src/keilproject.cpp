@@ -1,4 +1,5 @@
 #include "keilproject.h"
+#include "novoproject.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -260,6 +261,8 @@ void parseUvprojxTargets(const QString &uvprojx, KeilProjectData &data)
         current.mapFound = !current.mapPath.isEmpty();
         current.hookInstalled =
                 UvprojxHook::containsToolMarker(userProg1 + QStringLiteral(" ") + userProg2);
+        current.reportLanguage = UvprojxHook::reportLanguage(
+                userProg1 + QStringLiteral(" ") + userProg2);
         current.legacyMemoryReportInstalled = UvprojxHook::containsLegacyMemoryReport(
                 userProg1 + QStringLiteral(" ") + userProg2);
         data.targets.append(current);
@@ -465,6 +468,11 @@ KeilProjectData parseKeilProject(const QString &rawPath)
     data.sourcePath = path;
 
     const QFileInfo info(path);
+    if ((info.isFile() && (info.fileName() == QLatin1String(".cproject")
+                          || info.fileName() == QLatin1String(".project")
+                          || info.fileName() == QLatin1String(".novoproject")))
+        || (info.isDir() && QFileInfo::exists(QDir(path).filePath(".cproject"))))
+        return NovoProject::parse(path);
     if (info.isFile()) {
         const QString suffix = info.suffix().toLower();
         if (suffix == QLatin1String("uvprojx")) {
@@ -564,6 +572,7 @@ QVariantList KeilProject::targets() const
         map.insert(QStringLiteral("outputName"), target.outputName);
         map.insert(QStringLiteral("linkerMapEnabled"), target.linkerMapEnabled);
         map.insert(QStringLiteral("hookInstalled"), target.hookInstalled);
+        map.insert(QStringLiteral("reportLanguage"), target.reportLanguage);
         map.insert(QStringLiteral("legacyMemoryReportInstalled"),
                    target.legacyMemoryReportInstalled);
         map.insert(QStringLiteral("mapFound"), target.mapFound);

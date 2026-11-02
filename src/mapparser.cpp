@@ -1,4 +1,5 @@
 #include "mapparser.h"
+#include "gnumapparser.h"
 
 #include <QFile>
 #include <QRegularExpression>
@@ -156,7 +157,7 @@ QVector<MapMemoryRegion> parseMemoryRegions(const QString &text)
 
 } // namespace
 
-MapSummary MapParser::parse(const QString &mapPath)
+MapSummary MapParser::parse(const QString &mapPath, const QString &elfPath)
 {
     MapSummary summary;
     summary.mapPath = mapPath;
@@ -167,6 +168,9 @@ MapSummary MapParser::parse(const QString &mapPath)
         return summary;
     }
     const QString text = QString::fromUtf8(file.readAll());
+
+    if (text.contains(QStringLiteral("Linker script and memory map")))
+        return parseGnuMap(mapPath, text, elfPath);
 
     summary.regions = parseMemoryRegions(text);
 

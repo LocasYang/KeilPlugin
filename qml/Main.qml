@@ -89,8 +89,8 @@ ApplicationWindow {
 
     FileDialog {
         id: projectFileDialog
-        title: I18n.t("Select Keil Project", "选择 Keil 工程文件")
-        nameFilters: [I18n.t("Keil project files (*.uvprojx *.uvmpw)", "Keil 工程文件 (*.uvprojx *.uvmpw)"),
+        title: I18n.t("Select Keil / NovoStudio Project", "选择 Keil / NovoStudio 工程文件")
+        nameFilters: [I18n.t("ARM projects (*.uvprojx *.uvmpw .cproject .project .novoproject)", "ARM 工程 (*.uvprojx *.uvmpw .cproject .project .novoproject)"),
                       I18n.t("All files (*)", "所有文件 (*)")]
         onAccepted: PluginManager.loadProject(selectedFile)
     }
@@ -209,7 +209,7 @@ ApplicationWindow {
                             }
 
                             Text {
-                                text: I18n.t("Keil project build and delivery tool", "Keil 工程构建与交付工具")
+                                text: I18n.t("Keil / NovoStudio build and delivery tool", "Keil / NovoStudio 构建与交付工具")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -231,7 +231,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: root.projectLoaded
                                       ? PluginManager.project.sourcePath
-                                      : I18n.t("No Keil project loaded", "尚未载入 Keil 工程")
+                                      : I18n.t("No ARM project loaded", "尚未载入 ARM 工程")
                                 color: Theme.textSecondary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 12
@@ -251,8 +251,8 @@ ApplicationWindow {
                                                  (PluginManager.project.kind === "uvmpw" ? "多工程工作区"
                                                   : PluginManager.project.kind === "dir" ? "工程目录"
                                                   : "单工程"))
-                                      : I18n.t("Choose a .uvprojx or .uvmpw file with Load Project.",
-                                                 "点击右侧「载入工程」选择 .uvprojx / .uvmpw 工程文件")
+                                      : I18n.t("Load a Keil project or NovoStudio .cproject file.",
+                                                 "载入 Keil 工程或 NovoStudio 的 .cproject 文件")
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
@@ -445,7 +445,7 @@ ApplicationWindow {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: I18n.t("v1.3.0 · Qt 6.6 · Local", "v1.3.0 · Qt 6.6 · 本地运行")
+                                text: I18n.t("v1.4.0 · Qt 6.6 · Local", "v1.4.0 · Qt 6.6 · 本地运行")
                                 horizontalAlignment: Text.AlignHCenter
                                 color: Theme.textTertiary
                                 font.family: Theme.fontFamily

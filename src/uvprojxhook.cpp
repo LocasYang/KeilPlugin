@@ -28,7 +28,9 @@ const QRegularExpression &wrapRe()
     // optionally followed by "--project "<uvprojx>"".
     static const QRegularExpression re(
         QStringLiteral("--wrap\\s+\"(.*?)\"\\s+\"[^\"]*\""
-                       "(?:\\s+--project\\s+\"[^\"]*\")?\\s*$"),
+                       "(?:\\s+--project\\s+\"[^\"]*\")?"
+                       "(?:\\s+--lang\\s+(?:en|zh-CN))?"
+                       "(?:\\s+--restore-b64\\s+[A-Za-z0-9+/=]+)?\\s*$"),
         QRegularExpression::DotMatchesEverythingOption);
     return re;
 }
@@ -39,7 +41,9 @@ const QRegularExpression &wrapB64Re()
 {
     static const QRegularExpression re(
         QStringLiteral("--wrap-b64\\s+([A-Za-z0-9+/=]+)\\s+\"[^\"]*\""
-                       "(?:\\s+--project\\s+\"[^\"]*\")?\\s*$"),
+                       "(?:\\s+--project\\s+\"[^\"]*\")?"
+                       "(?:\\s+--lang\\s+(?:en|zh-CN))?"
+                       "(?:\\s+--restore-b64\\s+[A-Za-z0-9+/=]+)?\\s*$"),
         QRegularExpression::DotMatchesEverythingOption);
     return re;
 }
@@ -53,6 +57,19 @@ const QRegularExpression &restoreB64Re()
         QStringLiteral("--restore-b64\\s+([A-Za-z0-9+/=]+)\\s*$"),
         QRegularExpression::DotMatchesEverythingOption);
     return re;
+}
+
+const QRegularExpression &reportLanguageRe()
+{
+    static const QRegularExpression re(QStringLiteral("--lang\\s+(en|zh-CN)\\b"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    return re;
+}
+
+QString normalizedLanguage(const QString &language)
+{
+    return language.compare(QLatin1String("zh-CN"), Qt::CaseInsensitive) == 0
+            ? QStringLiteral("zh-CN") : QStringLiteral("en");
 }
 
 QString base64Encode(const QString &text)
@@ -197,8 +214,14 @@ bool containsLegacyMemoryReport(const QString &text)
     return isLegacyMemoryReportCommand(text);
 }
 
+QString reportLanguage(const QString &text)
+{
+    const QRegularExpressionMatch match = reportLanguageRe().match(xmlUnesc(text));
+    return match.hasMatch() ? normalizedLanguage(match.captured(1)) : QString();
+}
+
 QString hookCommand(const QString &uvprojxPath, const QString &wrap, bool wrapBase64,
-                    const QString &restore)
+                    const QString &restore, const QString &language)
 {
     const QString exe = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
     // "#L" is expanded by Keil to the current target's linker output (.axf),
@@ -217,12 +240,14 @@ QString hookCommand(const QString &uvprojxPath, const QString &wrap, bool wrapBa
     if (!uvprojxPath.isEmpty())
         command += QStringLiteral(" --project \"%1\"")
                        .arg(QDir::toNativeSeparators(QFileInfo(uvprojxPath).absoluteFilePath()));
+    command += QStringLiteral(" --lang %1").arg(normalizedLanguage(language));
     if (!restore.isEmpty())
         command += QStringLiteral(" --restore-b64 %1").arg(base64Encode(restore));
     return command;
 }
 
-PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, bool remove)
+PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, bool remove,
+                              const QString &language)
 {
     PatchOutcome outcome;
     const QString projectBase = QFileInfo(uvprojxPath).fileName();
@@ -316,7 +341,8 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
                                                            : wrappedLegacySlot;
         if (replacementSlot != 0) {
             QString migrated = block;
-            const QString command = hookCommand(uvprojxPath, QString(), false, legacyCommand);
+            const QString command = hookCommand(uvprojxPath, QString(), false, legacyCommand,
+                                                language);
             migrated = setSlot(migrated, replacementSlot, xmlEsc(command), true);
 
             // If an earlier app version already occupied the other slot,
@@ -359,10 +385,12 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
                 if (wrappedB64.hasMatch()) {
                     // Older base64 hooks lack the "--project" context: decode,
                     // regenerate and keep the wrapped original unchanged.
-                    if (!value.contains(QLatin1String("--project"))) {
+                    if (!value.contains(QLatin1String("--project"))
+                        || reportLanguage(value) != normalizedLanguage(language)) {
                         const QString original = base64Decode(wrappedB64.captured(1));
                         upgraded = setSlot(upgraded, n,
-                                           xmlEsc(hookCommand(uvprojxPath, original, true)),
+                                           xmlEsc(hookCommand(uvprojxPath, original, true,
+                                                              QString(), language)),
                                            true);
                         outcome.notes.append(
                             QStringLiteral("%1 · slot%2: 钩子已升级 (--project 容量上下文)")
@@ -374,18 +402,25 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
                 const auto wrapped = wrapRe().match(value);
                 if (wrapped.hasMatch()) {
                     const QString original = xmlUnesc(wrapped.captured(1));
-                    upgraded = setSlot(upgraded, n,
-                                       xmlEsc(hookCommand(uvprojxPath, original,
-                                                          original.contains(QLatin1Char('"')))),
-                                       true);
-                    outcome.notes.append(
-                        QStringLiteral("%1 · slot%2: 钩子已升级 (#L 按 Target 过滤)").arg(projectBase).arg(n));
-                    changedSlot = true;
+                    if (!value.contains(QLatin1String("--project"))
+                        || reportLanguage(value) != normalizedLanguage(language)) {
+                        upgraded = setSlot(upgraded, n,
+                                           xmlEsc(hookCommand(uvprojxPath, original,
+                                                              original.contains(QLatin1Char('"')),
+                                                              QString(), language)),
+                                           true);
+                        outcome.notes.append(
+                            QStringLiteral("%1 · slot%2: 钩子已升级 (#L 按 Target 过滤)").arg(projectBase).arg(n));
+                        changedSlot = true;
+                    }
                     continue;
                 }
                 if (value.contains(QStringLiteral("--size-report"))
-                    && !value.contains(QLatin1String("#L"))) {
-                    upgraded = setSlot(upgraded, n, xmlEsc(hookCommand(uvprojxPath)), true);
+                    && (!value.contains(QLatin1String("#L"))
+                        || reportLanguage(value) != normalizedLanguage(language))) {
+                    upgraded = setSlot(upgraded, n,
+                                       xmlEsc(hookCommand(uvprojxPath, QString(), false,
+                                                          QString(), language)), true);
                     outcome.notes.append(
                         QStringLiteral("%1 · slot%2: 钩子已升级 (#L 按 Target 过滤)").arg(projectBase).arg(n));
                     changedSlot = true;
@@ -399,7 +434,7 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
         for (int n : { 2, 1 }) {
             if (!getSlot(block, n).trimmed().isEmpty())
                 continue;
-            const QString command = hookCommand(uvprojxPath);
+            const QString command = hookCommand(uvprojxPath, QString(), false, QString(), language);
             outcome.notes.append(QStringLiteral("%1 · slot%2: %3").arg(projectBase).arg(n).arg(command));
             outcome.changed = true;
             return setSlot(block, n, xmlEsc(command), true);
@@ -410,7 +445,8 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
         // they are base64-wrapped instead of being skipped.
         const QString original = xmlUnesc(getSlot(block, 2));
         const bool needsBase64 = original.contains(QLatin1Char('"'));
-        const QString command = hookCommand(uvprojxPath, original, needsBase64);
+        const QString command = hookCommand(uvprojxPath, original, needsBase64,
+                                            QString(), language);
         if (needsBase64) {
             outcome.notes.append(
                 QStringLiteral("%1 · slot2: 原命令含引号, 已 base64 包装 [%2] -> 先运行再打印报告")
@@ -426,7 +462,7 @@ PatchOutcome patchProjectText(const QString &text, const QString &uvprojxPath, b
     return outcome;
 }
 
-PatchOutcome installInFile(const QString &uvprojxPath)
+PatchOutcome installInFile(const QString &uvprojxPath, const QString &language)
 {
     PatchOutcome outcome;
     const ProjectText::Decoded decoded = ProjectText::decodeFile(uvprojxPath);
@@ -435,7 +471,7 @@ PatchOutcome installInFile(const QString &uvprojxPath)
         return outcome;
     }
 
-    const PatchOutcome patched = patchProjectText(decoded.text, uvprojxPath, false);
+    const PatchOutcome patched = patchProjectText(decoded.text, uvprojxPath, false, language);
     outcome.notes = patched.notes;
     if (!patched.changed) {
         outcome.newText = decoded.text;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(KeilPluginStudio VERSION 1.3.0 LANGUAGES CXX)
+project(KeilPluginStudio VERSION 1.4.0 LANGUAGES CXX)
 
 include(CTest)
 
@@ -21,6 +21,10 @@ qt_add_executable(KeilPluginStudio
     src/windowchrome.h
     src/mapparser.cpp
     src/mapparser.h
+    src/gnumapparser.cpp
+    src/gnumapparser.h
+    src/novoproject.cpp
+    src/novoproject.h
     src/keilproject.cpp
     src/keilproject.h
     src/uvprojxhook.cpp
@@ -79,7 +83,10 @@ endif()
 if (BUILD_TESTING)
     add_executable(KeilPluginCoreTest
         tests/keilplugintests.cpp
+        tests/novotests.cpp
         src/mapparser.cpp
+        src/gnumapparser.cpp
+        src/novoproject.cpp
         src/keilproject.cpp
         src/uvprojxhook.cpp
         src/hexmerger.cpp

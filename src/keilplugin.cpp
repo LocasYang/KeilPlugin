@@ -8,11 +8,13 @@ bool KeilPlugin::targetInstalled(const KeilTarget &target) const
     return false;
 }
 
-UvprojxHook::PatchOutcome KeilPlugin::installProject(const QString &uvprojxPath) const
+UvprojxHook::PatchOutcome KeilPlugin::installProject(const QString &uvprojxPath,
+                                                      const QString &language) const
 {
     UvprojxHook::PatchOutcome outcome;
     outcome.error = QStringLiteral("该功能组件不支持写入工程配置");
     Q_UNUSED(uvprojxPath);
+    Q_UNUSED(language);
     return outcome;
 }
 

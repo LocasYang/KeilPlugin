@@ -29,11 +29,15 @@
 #include "keilproject.h"
 #include "keysequence.h"
 #include "mapparser.h"
+#include "novoproject.h"
 #include "pluginmanager.h"
 #include "pluginregistry.h"
 #include "windowchrome.h"
 
 namespace {
+
+// NovoStudio's Eclipse console uses UTF-8; Keil expects the Windows codepage.
+bool utf8Console = false;
 
 QStringList nativeArguments(int argc, char *argv[])
 {
@@ -45,7 +49,7 @@ QStringList nativeArguments(int argc, char *argv[])
 
 void printLine(const QString &text, bool toStderr = false)
 {
-    const QByteArray encoded = text.toLocal8Bit();
+    const QByteArray encoded = utf8Console ? text.toUtf8() : text.toLocal8Bit();
     std::FILE *stream = toStderr ? stderr : stdout;
     std::fwrite(encoded.constData(), 1, encoded.size(), stream);
     std::fputc('\n', stream);
@@ -277,6 +281,8 @@ QString memoryHistoryPath(const KeilTarget &target)
     if (target.uvprojx.isEmpty())
         return QString();
     QString targetId = target.outputName.isEmpty() ? target.name : target.outputName;
+    if (QFileInfo(target.uvprojx).fileName() == QLatin1String(".cproject"))
+        targetId = target.name + QLatin1Char('-') + targetId;
     targetId.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_.-]+")),
                      QStringLiteral("_"));
     if (targetId.isEmpty())
@@ -397,16 +403,19 @@ QVector<MapComponent> topMemoryComponents(const MapSummary &summary, int limit)
 // per-file RAM/FLASH table.
 QString formatReportTarget(const KeilTarget &target, const MapSummary &summary,
                            const MemoryHistory &history, int top,
-                           qint64 flashOverride, qint64 ramOverride)
+                           qint64 flashOverride, qint64 ramOverride,
+                           bool english)
 {
-    const qint64 flashCap = flashOverride > 0 ? flashOverride : target.flashCap;
-    const qint64 ramCap = ramOverride > 0 ? ramOverride : target.ramCap;
+    const qint64 flashCap = flashOverride > 0 ? flashOverride
+            : summary.gnu ? summary.flashCapacity : target.flashCap;
+    const qint64 ramCap = ramOverride > 0 ? ramOverride
+            : summary.gnu ? summary.ramCapacity : target.ramCap;
     const qint64 romUsed = summary.totalROM;
     const qint64 ramUsed = summary.totalRW;
     const QHash<QString, QString> labels = sourceLabels(target);
 
     QStringList lines;
-    const QString banner = QStringLiteral(" KeilPlugin Studio - Memory Report v1.3.0 ");
+    const QString banner = QStringLiteral(" KeilPlugin Studio - Memory Report v1.4.0 ");
     const int bannerSide = qMax(0, (130 - banner.size()) / 2);
     lines.append(QStringLiteral("=").repeated(bannerSide) + banner
                  + QStringLiteral("=").repeated(130 - bannerSide - banner.size()));
@@ -422,6 +431,9 @@ QString formatReportTarget(const KeilTarget &target, const MapSummary &summary,
                           target.name.isEmpty() ? QStringLiteral("-") : target.name,
                           target.device.isEmpty() ? QStringLiteral("?") : target.device,
                           lto));
+    if (summary.gnu)
+        lines.append(english ? QStringLiteral("Toolchain: GNU Arm / NovoStudio (MAP + ELF)")
+                             : QStringLiteral("工具链: GNU Arm / NovoStudio (MAP + ELF)"));
     lines.append(QString());
 
     if (!summary.objectComponents.isEmpty()) {
@@ -463,15 +475,17 @@ QString formatReportTarget(const KeilTarget &target, const MapSummary &summary,
         const qint64 uncompressed = summary.code + summary.roData + summary.rwData;
         QString note;
         if (uncompressed > romUsed)
-            note = QStringLiteral("  (RW 数据压缩存放, 实占以 Flash 行为准)");
-        lines.append(QStringLiteral("  明细 : Code=%1  RO-data=%2  RW-data=%3  ZI-data=%4%5")
+            note = english
+                    ? QStringLiteral("  (RW data is stored in FLASH; physical usage follows the FLASH line)")
+                    : QStringLiteral("  (RW 数据压缩存放, 实占以 Flash 行为准)");
+        lines.append((english ? QStringLiteral("  Details: Code=%1  RO-data=%2  RW-data=%3  ZI-data=%4%5")
+                              : QStringLiteral("  明细 : Code=%1  RO-data=%2  RW-data=%3  ZI-data=%4%5"))
                          .arg(summary.code)
                          .arg(summary.roData)
                          .arg(summary.rwData)
                          .arg(summary.ziData)
                          .arg(note));
     }
-
     if (!summary.regions.isEmpty()) {
         QVector<MapMemoryRegion> regions = summary.regions;
         std::sort(regions.begin(), regions.end(), [](const MapMemoryRegion &a,
@@ -510,10 +524,14 @@ QString formatReportTarget(const KeilTarget &target, const MapSummary &summary,
     }
 
     if (flashCap > 0 && 100.0 * romUsed / flashCap >= 90.0)
-        lines.append(QStringLiteral("  *** WARNING: Flash usage >= 90%, 剩余 %1")
+        lines.append((english
+                      ? QStringLiteral("  *** WARNING: Flash usage >= 90%, %1 remaining")
+                      : QStringLiteral("  *** WARNING: Flash usage >= 90%, 剩余 %1"))
                          .arg(MapParser::formatBytes(flashCap - romUsed)));
     if (ramCap > 0 && 100.0 * ramUsed / ramCap >= 90.0)
-        lines.append(QStringLiteral("  *** WARNING: RAM usage >= 90%, 剩余 %1")
+        lines.append((english
+                      ? QStringLiteral("  *** WARNING: RAM usage >= 90%, %1 remaining")
+                      : QStringLiteral("  *** WARNING: RAM usage >= 90%, 剩余 %1"))
                          .arg(MapParser::formatBytes(ramCap - ramUsed)));
 
     if (top > 0 && !summary.components.isEmpty()) {
@@ -559,16 +577,36 @@ struct CliConfig {
     QString path;
     QString projectPath; // uvprojx context for .axf inputs (#L): caps + metadata
     QString mapOverride; // explicit .map path (--map), beats every auto guess
+    QString elfOverride;
+    QString targetName;
     QString wrap;        // verbatim wrapped command (--wrap)
     QString wrapB64;     // base64-wrapped command (--wrap-b64)
     int top = 20;
     qint64 flash = 0;
     qint64 ram = 0;
+    QString language = QStringLiteral("en");
     bool quiet = false;
 };
 
+QString localizedMapError(const QString &error, bool english)
+{
+    if (!english)
+        return error;
+    const QString readPrefix = QStringLiteral("无法读取 map 文件: ");
+    const QString summaryPrefix = QStringLiteral("map 文件中没有 armlink 尺寸汇总: ");
+    if (error.startsWith(readPrefix))
+        return QStringLiteral("Unable to read MAP file: ") + error.mid(readPrefix.size());
+    if (error.startsWith(summaryPrefix))
+        return QStringLiteral("No armlink size summary in MAP file: ")
+                + error.mid(summaryPrefix.size());
+    return error;
+}
+
 int runSizeReportCli(const QStringList &arguments)
 {
+    utf8Console = std::any_of(arguments.cbegin(), arguments.cend(), [](const QString &arg) {
+        return arg.startsWith(QLatin1String("--novo-hook="));
+    });
     CliConfig config;
     bool haveMode = false;
     bool havePath = false;
@@ -589,12 +627,20 @@ int runSizeReportCli(const QStringList &arguments)
             config.projectPath = arguments.at(++i);
         } else if (argument == QLatin1String("--map") && i + 1 < arguments.size()) {
             config.mapOverride = arguments.at(++i);
+        } else if (argument == QLatin1String("--elf") && i + 1 < arguments.size()) {
+            config.elfOverride = arguments.at(++i);
+        } else if (argument == QLatin1String("--target") && i + 1 < arguments.size()) {
+            config.targetName = arguments.at(++i);
         } else if (argument == QLatin1String("--top") && i + 1 < arguments.size()) {
             config.top = arguments.at(++i).toInt();
         } else if (argument == QLatin1String("--flash") && i + 1 < arguments.size()) {
             config.flash = MapParser::parseSizeBytes(arguments.at(++i));
         } else if (argument == QLatin1String("--ram") && i + 1 < arguments.size()) {
             config.ram = MapParser::parseSizeBytes(arguments.at(++i));
+        } else if (argument == QLatin1String("--lang") && i + 1 < arguments.size()) {
+            config.language = arguments.at(++i).compare(QLatin1String("zh-CN"),
+                                                        Qt::CaseInsensitive) == 0
+                    ? QStringLiteral("zh-CN") : QStringLiteral("en");
         } else if (argument == QLatin1String("--quiet")) {
             config.quiet = true;
         } else if (!argument.startsWith(QLatin1Char('-')) && !havePath) {
@@ -604,9 +650,14 @@ int runSizeReportCli(const QStringList &arguments)
     }
 
     if (!haveMode || !havePath) {
-        printLine(QStringLiteral("用法: KeilPluginStudio.exe --size-report <uvprojx|uvmpw|.map|.axf|目录>"
-                                 " [--project <uvprojx>] [--map <map文件>] [--top N] [--flash 230K]"
-                                 " [--ram 64K] [--quiet]"),
+        const bool english = config.language != QLatin1String("zh-CN");
+        printLine(english
+                  ? QStringLiteral("Usage: KeilPluginStudio.exe --size-report <uvprojx|uvmpw|.cproject|.map|.elf|.axf|directory>"
+                                   " [--project <project-file>] [--target <config>] [--elf <elf-file>] [--map <map-file>] [--top N] [--flash 230K]"
+                                   " [--ram 64K] [--lang en|zh-CN] [--quiet]")
+                  : QStringLiteral("用法: KeilPluginStudio.exe --size-report <uvprojx|uvmpw|.cproject|.map|.elf|.axf|目录>"
+                                   " [--project <project-file>] [--target <config>] [--elf <elf-file>] [--map <map文件>] [--top N] [--flash 230K]"
+                                   " [--ram 64K] [--lang en|zh-CN] [--quiet]"),
                   true);
         return 2;
     }
@@ -617,7 +668,9 @@ int runSizeReportCli(const QStringList &arguments)
     if (!config.wrapB64.isEmpty()) {
         wrappedCommand = QString::fromUtf8(QByteArray::fromBase64(config.wrapB64.toLatin1()));
         if (wrappedCommand.isEmpty()) {
-            printLine(QStringLiteral("无效的 --wrap-b64 参数"), true);
+            printLine(config.language == QLatin1String("zh-CN")
+                      ? QStringLiteral("无效的 --wrap-b64 参数")
+                      : QStringLiteral("Invalid --wrap-b64 argument"), true);
             return 1;
         }
     }
@@ -636,7 +689,9 @@ int runSizeReportCli(const QStringList &arguments)
         QString startError;
         const int wrappedExit = runWrappedCommand(wrappedCommand, &startError);
         if (wrappedExit < 0) {
-            printLine(QStringLiteral("无法启动被包装的命令: %1%2")
+            printLine((config.language == QLatin1String("zh-CN")
+                       ? QStringLiteral("无法启动被包装的命令: %1%2")
+                       : QStringLiteral("Unable to start wrapped command: %1%2"))
                           .arg(wrappedCommand,
                                startError.isEmpty() ? QString()
                                                     : QStringLiteral(" (%1)").arg(startError)),
@@ -656,10 +711,13 @@ int runSizeReportCli(const QStringList &arguments)
     };
 
     KeilProjectData data = parseKeilProject(config.path);
+    if (data.kind == QLatin1String("cproject")) utf8Console = true;
     QVector<Entry> entries;
 
-    if ((data.kind == QLatin1String("uvprojx") || data.kind == QLatin1String("uvmpw"))) {
+    if ((data.kind == QLatin1String("uvprojx") || data.kind == QLatin1String("uvmpw")
+         || data.kind == QLatin1String("cproject"))) {
         for (const KeilTarget &target : data.targets) {
+            if (!config.targetName.isEmpty() && target.name != config.targetName) continue;
             Entry entry;
             entry.target = target;
             entry.hasTarget = true;
@@ -673,6 +731,28 @@ int runSizeReportCli(const QStringList &arguments)
             QString mapPath;
             if (suffix == QLatin1String("map")) {
                 mapPath = config.path;
+            } else if (suffix == QLatin1String("elf")) {
+                Entry entry;
+                entry.target.project = info.completeBaseName();
+                entry.target.name = config.targetName;
+                entry.target.elfPath = info.absoluteFilePath();
+                entry.target.mapPath = QDir(info.absolutePath()).filePath(info.completeBaseName() + ".map");
+                if (!config.projectPath.isEmpty()) {
+                    const auto context = parseKeilProject(config.projectPath);
+                    for (const auto &target : context.targets) {
+                        if (!config.targetName.isEmpty() && target.name != config.targetName) continue;
+                        if (QDir::cleanPath(target.elfPath).compare(QDir::cleanPath(info.absoluteFilePath()),
+                                                                  Qt::CaseInsensitive) != 0) continue;
+                        entry.target = target; entry.hasTarget = true; break;
+                    }
+                    if (!entry.hasTarget) {
+                        printLine(QStringLiteral("ELF does not match the requested project/configuration: %1 %2")
+                                  .arg(config.projectPath, config.targetName), true);
+                        return 2;
+                    }
+                }
+                entry.hasMap = QFileInfo::exists(entry.target.mapPath);
+                entries.append(entry);
             } else if (suffix == QLatin1String("axf")) {
                 // "#L" from Keil lands here: report exactly this target. The
                 // optional --project context restores the target's name, device
@@ -740,14 +820,18 @@ int runSizeReportCli(const QStringList &arguments)
     }
 
     if (entries.isEmpty()) {
-        printLine(QStringLiteral("no uvprojx/uvmpw/map found at: %1").arg(config.path), true);
+        printLine(QStringLiteral("No matching project/configuration/MAP/ELF at: %1 %2 %3")
+                  .arg(config.path, config.targetName, data.error), true);
         return 2;
     }
 
     // Explicit user override: wins over every automatic resolution.
     if (!config.mapOverride.isEmpty()) {
         if (!QFileInfo::exists(config.mapOverride)) {
-            printLine(QStringLiteral("--map 指定的文件不存在: %1").arg(config.mapOverride), true);
+            printLine((config.language == QLatin1String("zh-CN")
+                       ? QStringLiteral("--map 指定的文件不存在: %1")
+                       : QStringLiteral("The file specified by --map does not exist: %1"))
+                              .arg(config.mapOverride), true);
             return 2;
         }
         const QString overrideMap =
@@ -759,9 +843,11 @@ int runSizeReportCli(const QStringList &arguments)
     }
 
     bool ok = false;
-    for (const Entry &entry : entries) {
+    for (Entry &entry : entries) {
         if (!entry.hasMap) {
-            printLine(QStringLiteral("Target '%1': 未找到 .map 文件")
+            const bool english = config.language != QLatin1String("zh-CN");
+            printLine((english ? QStringLiteral("Target '%1': .map file not found")
+                               : QStringLiteral("Target '%1': 未找到 .map 文件"))
                           .arg(entry.hasTarget ? entry.target.name : entry.target.project));
             QStringList searched;
             if (!entry.target.listingDir.isEmpty())
@@ -769,27 +855,41 @@ int runSizeReportCli(const QStringList &arguments)
             if (!entry.target.outputDir.isEmpty())
                 searched.append(entry.target.outputDir);
             if (!searched.isEmpty())
-                printLine(QStringLiteral("  已查找: %1, 以及它与工程目录的公共上级(递归, 限深 4 层)")
+                printLine((english
+                           ? QStringLiteral("  Searched: %1, plus their common ancestor with the project directory (recursive, max depth 4)")
+                           : QStringLiteral("  已查找: %1, 以及它与工程目录的公共上级(递归, 限深 4 层)"))
                               .arg(searched.join(QStringLiteral(", "))));
             if (entry.hasTarget && !entry.target.linkerMapEnabled)
-                printLine(QStringLiteral(
-                        "  注意: 该 Target 未勾选 Linker Listing (AdsLmap=0), Keil 不会生成 map"));
-            printLine(QStringLiteral(
-                    "  若从未编译请先编译一次; 否则请检查 map 输出目录设置, 或用 --map <map文件> 显式指定"));
+                printLine(english
+                          ? QStringLiteral("  Note: Linker Listing is disabled for this target (AdsLmap=0), so Keil will not generate a MAP file")
+                          : QStringLiteral("  注意: 该 Target 未勾选 Linker Listing (AdsLmap=0), Keil 不会生成 map"));
+            printLine(english
+                      ? QStringLiteral("  Build once if this project has never been built; otherwise check the MAP output directory or pass --map <map-file> explicitly")
+                      : QStringLiteral("  若从未编译请先编译一次; 否则请检查 map 输出目录设置, 或用 --map <map文件> 显式指定"));
             continue;
         }
-        const MapSummary summary = MapParser::parse(entry.target.mapPath);
+        const MapSummary summary = MapParser::parse(entry.target.mapPath,
+                config.elfOverride.isEmpty() ? entry.target.elfPath : config.elfOverride);
+        if (summary.gnu) utf8Console = true;
         if (!summary.ok) {
-            printLine(QStringLiteral("WARN: %1").arg(summary.error), true);
+            printLine(QStringLiteral("WARN: %1").arg(localizedMapError(
+                          summary.error, config.language != QLatin1String("zh-CN"))), true);
             continue;
         }
         ok = true;
+        if (summary.gnu) {
+            entry.target.flashCap = summary.flashCapacity;
+            entry.target.ramCap = summary.ramCapacity;
+        }
+        if (config.flash > 0) entry.target.flashCap = config.flash;
+        if (config.ram > 0) entry.target.ramCap = config.ram;
         if (config.quiet) {
             printLine(formatQuietLine(entry.target, summary));
         } else {
             const MemoryHistory history = loadMemoryHistory(entry.target);
             printLine(formatReportTarget(entry.target, summary, history, config.top,
-                                         config.flash, config.ram));
+                                         config.flash, config.ram,
+                                         config.language != QLatin1String("zh-CN")));
             saveMemoryHistory(history, summary);
         }
     }
@@ -801,6 +901,22 @@ int runSizeReportCli(const QStringList &arguments)
 int main(int argc, char *argv[])
 {
     const QStringList rawArguments = nativeArguments(argc, argv);
+
+    if (rawArguments.contains("--install-novo") || rawArguments.contains("--remove-novo")) {
+        QCoreApplication app(argc, argv);
+        const bool remove = rawArguments.contains("--remove-novo");
+        const int index = rawArguments.indexOf(remove ? "--remove-novo" : "--install-novo");
+        if (index + 1 >= rawArguments.size()) {
+            printLine("Usage: --install-novo|--remove-novo <.cproject|directory> [--lang en|zh-CN]", true);
+            return 2;
+        }
+        const int lang = rawArguments.indexOf("--lang");
+        const auto outcome = NovoProject::patchFile(rawArguments.at(index + 1), remove,
+                lang >= 0 && lang + 1 < rawArguments.size() ? rawArguments.at(lang + 1) : QStringLiteral("en"));
+        printLine(outcome.error.isEmpty() ? (outcome.changed ? "NovoStudio integration updated" : "No change needed")
+                                         : outcome.error, !outcome.error.isEmpty());
+        return outcome.error.isEmpty() ? 0 : 2;
+    }
 
     // Command line mode: invoked by the Keil After Build hook. Runs headless
     // (no GUI, no QML engine) so it stays fast inside the build.

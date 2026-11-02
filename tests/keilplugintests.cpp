@@ -14,6 +14,8 @@
 #include "pluginregistry.h"
 #include "uvprojxhook.h"
 
+int testNovoSupport();
+
 namespace {
 
 int failures = 0;
@@ -203,6 +205,9 @@ void testHookInstallUninstall()
     QString installed = readText(projectPath);
     check(UvprojxHook::containsToolMarker(installed), "marker present after install");
     check(installed.contains(QStringLiteral("--size-report")), "report flag written");
+    check(installed.contains(QStringLiteral("--lang en")), "English report language written");
+    check(UvprojxHook::reportLanguage(installed) == QLatin1String("en"),
+          "English report language detected");
     check(installed.contains("<RunUserProg2>1</RunUserProg2>"), "slot2 enabled");
     check(installed.contains("<RunUserProg1>0</RunUserProg1>"), "slot1 untouched");
 
@@ -211,6 +216,15 @@ void testHookInstallUninstall()
     check(!outcome.changed, "re-install unchanged");
     check(outcome.notes.join(QLatin1Char(';')).contains(QStringLiteral("已经安装")),
           "re-install note recorded");
+
+    // Re-applying integration after a UI-language change rewrites only the
+    // report language persisted in the Keil command.
+    outcome = UvprojxHook::installInFile(projectPath, QStringLiteral("zh-CN"));
+    check(outcome.changed, "language update changes hook");
+    installed = readText(projectPath);
+    check(installed.contains(QStringLiteral("--lang zh-CN")), "Chinese report language written");
+    check(UvprojxHook::reportLanguage(installed) == QLatin1String("zh-CN"),
+          "Chinese report language detected");
 
     // 2. Uninstall restores the empty slots.
     outcome = UvprojxHook::uninstallInFile(projectPath);
@@ -680,6 +694,7 @@ int main(int argc, char *argv[])
     testResolveAxfContext();
     testHexMerger();
     testRegistry();
+    failures += testNovoSupport();
 
     if (failures == 0) {
         qInfo().noquote() << "KeilPluginCoreTest: all checks passed";

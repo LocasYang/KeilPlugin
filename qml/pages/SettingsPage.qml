@@ -164,8 +164,8 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: I18n.t("Use the following sequence to configure and verify a project. Close Keil before changing project integration:",
-                                     "按以下流程完成工程配置与结果复核。配置工程前应先关闭 Keil：")
+                        text: I18n.t("Use the following sequence to configure and verify a project. Close Keil / NovoStudio before changing project integration:",
+                                     "按以下流程完成工程配置与结果复核。配置工程前应先关闭 Keil / NovoStudio：")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 12
@@ -184,13 +184,13 @@ Item {
                             id: extCodeText
                             anchors.fill: parent
                             anchors.margins: 11
-                            text: I18n.t("1. Load a .uvprojx or .uvmpw project.\n"
+                            text: I18n.t("1. Load a Keil project or NovoStudio .cproject.\n"
                                          + "2. Review targets and devices in Project Tools.\n"
-                                         + "3. Configure memory analysis, then Build/Rebuild in Keil.\n"
+                                         + "3. Configure memory analysis, then Build/Rebuild in Keil / NovoStudio.\n"
                                          + "4. Review the result in Memory Analysis and Activity Log.",
-                                         "1. 载入 .uvprojx 或 .uvmpw 工程文件。\n"
+                                         "1. 载入 Keil 工程或 NovoStudio 的 .cproject。\n"
                                          + "2. 在「工程功能」中核对构建目标与器件信息。\n"
-                                         + "3. 将存储分析功能配置到工程，重新打开 Keil 执行 Build/Rebuild。\n"
+                                         + "3. 将存储分析功能配置到工程，重新打开 Keil / NovoStudio 执行 Build/Rebuild。\n"
                                          + "4. 在「存储占用分析」和「操作记录」中复核结果。")
                             color: Theme.textPrimary
                             font.family: Theme.fontFamily
@@ -202,8 +202,8 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: I18n.t("Project integration changes only the uvprojx After Build command. XML is validated before writing, and removal restores the previous command. Intel HEX merging runs locally without changing the Keil project.",
-                                     "工程集成仅修改 uvprojx 的 After Build 用户命令；写回前会校验 XML，"
+                        text: I18n.t("Project integration changes only post-build commands in .uvprojx / .cproject. XML is validated before writing, and removal restores the previous command. Intel HEX merging runs locally without changing the Keil project.",
+                                     "工程集成仅修改 .uvprojx / .cproject 的构建后命令；写回前会校验 XML，"
                                      + "从工程移除时会恢复原有命令。Intel HEX 合并在本机独立执行，不修改 Keil 工程。")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
@@ -247,7 +247,7 @@ Item {
                         }
 
                         Text {
-                            text: "KeilPlugin Studio v1.3.0"
+                            text: "KeilPlugin Studio v1.4.0"
                             color: Theme.textPrimary
                             font.family: Theme.fontFamily
                             font.pixelSize: 12
@@ -292,7 +292,7 @@ Item {
                         }
 
                         Text {
-                            text: "--size-report " + I18n.t("<project>", "<工程>") + " [--top N] [--flash 230K] [--ram 64K] [--quiet]"
+                            text: "--size-report " + I18n.t("<project>", "<工程>") + " [--top N] [--flash 230K] [--ram 64K] [--lang en|zh-CN] [--quiet]"
                             color: Theme.textPrimary
                             font.family: "Consolas"
                             font.pixelSize: 11
@@ -302,9 +302,9 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: I18n.t("After configuration, Keil's After Build command invokes this application's command-line interface and prints a unified FLASH/RAM report in Build Output.",
-                                     "工程配置完成后，Keil 的 After Build 用户命令会调用本软件的命令行接口，"
-                                     + "并在 Build Output 窗口输出统一的 FLASH/RAM 存储分析报告。")
+                        text: I18n.t("After configuration, Keil / NovoStudio post-build commands invokes this application's command-line interface and prints a unified FLASH/RAM report in Build Output. The selected application language is stored in the hook; update integration after changing language.",
+                                     "工程配置完成后，Keil / NovoStudio 的构建后命令会调用本软件的命令行接口，"
+                                     + "并在 Build Output 窗口输出统一的 FLASH/RAM 存储分析报告。报告语言会写入工程钩子；切换语言后请更新工程集成。")
                         color: Theme.textSecondary
                         font.family: Theme.fontFamily
                         font.pixelSize: 12

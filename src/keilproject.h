@@ -27,7 +27,9 @@ struct KeilTarget {
     bool linkerMapEnabled = true;
     bool hookInstalled = false;
     bool legacyMemoryReportInstalled = false;
+    QString reportLanguage;
     QString mapPath;
+    QString elfPath;        // GNU Arm companion ELF, empty for Keil/armlink
     bool mapFound = false;
 };
 
